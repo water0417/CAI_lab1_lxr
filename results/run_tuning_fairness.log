@@ -1,0 +1,17 @@
+[核查] 配置与 §3.1 主表一致：routing + max_features=50000 + sublinear_tf
+[核查] 25 折、同一随机种子；只改模型超参
+
+  LogisticRegression C=1（主表用的，未调）        Macro-F1 = 0.9280 ± 0.0062  间隙 0.0584
+  LogisticRegression C=10                Macro-F1 = 0.9388 ± 0.0070  间隙 0.0610
+  LogisticRegression C=100（自身最优）         Macro-F1 = 0.9405 ± 0.0068  间隙 0.0593
+  NaiveBayes alpha=1.0（主表用的，未调）          Macro-F1 = 0.9187 ± 0.0060  间隙 0.0565
+  NaiveBayes alpha=0.1                   Macro-F1 = 0.9391 ± 0.0053  间隙 0.0538
+  NaiveBayes alpha=0.01                  Macro-F1 = 0.9353 ± 0.0064  间隙 0.0618
+
+[配对检验] 与主表其余模型对比：
+    MLP(未调)        vs LR(C=100)      Δ=+0.0040  CI[+0.0017,+0.0063]  p25=0.0013 p重复=0.0027  显著
+    LinearSVC      vs LR(C=100)      Δ=+0.0029  CI[+0.0019,+0.0039]  p25=2.4e-06 p重复=0.0036  显著
+    LR(C=100)      vs LR(C=1)        Δ=+0.0125  CI[+0.0109,+0.0141]  p25=2.9e-14 p重复=5.3e-06  显著
+    LinearSVC      vs NB(alpha=0.01) Δ=+0.0081  CI[+0.0052,+0.0111]  p25=7.5e-06 p重复=0.0005  显著
+
+[记录] results/tuning_fairness_5x5.csv 与 tuning_fairness_fold_scores_5x5.csv
