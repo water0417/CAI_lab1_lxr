@@ -113,7 +113,7 @@ python main.py --smoke      # 先跑自检：600 条样本走通全流程，不�
 ### `plots.py` —— 结果性图表
 
 ```bash
-python plots.py                 # 全部 8 张
+python plots.py                 # 全部 12 张
 python plots.py --only fig4     # 只生成某一张
 ```
 

@@ -52,6 +52,15 @@ POS, NEG = "#2a78d6", "#e34948"          # 发散配色：蓝 ↔ 红
 # 单一蓝色由浅到深（顺序编码，用于混淆矩阵）
 BLUE_RAMP = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95", "#0d366b"]
 
+# 模型 → 固定色位。颜色跟随**实体**而不是排名：同一个模型在任何一张图里都是同一个颜色，
+# 换一张图、换一次排序，颜色都不会跳（否则读者会把颜色误当成"名次"来记）。
+MODEL_COLORS = {
+    "NaiveBayes": SERIES[0],
+    "LogisticRegression": SERIES[1],
+    "LinearSVC": SERIES[2],
+    "MLP": SERIES[3],
+}
+
 
 def setup_style() -> None:
     plt.rcParams.update({
@@ -557,15 +566,249 @@ def fig8_per_class_f1(n_splits: int = 5):
     _save(fig, "fig8_per_class_f1.png")
 
 
+# ==========================================================================
+# 图 9~12 · 结果总览（供报告「结果与评估」章节用）
+# ==========================================================================
+def _pm(s) -> tuple[float, float]:
+    """把 "0.7451 ± 0.0332" 拆成 (均值, 标准差)。
+
+    learning_curve.csv 里只有"验证-MacroF1"带 ±，"泛化间隙"是纯浮点，
+    所以没有 ± 时标准差记 0（画出来就是没有误差带）。
+    """
+    s = str(s)
+    if "±" in s:
+        a, b = s.split("±")
+        return float(a.strip()), float(b.strip())
+    return float(s), 0.0
+
+
+def _mean_ci(x: np.ndarray, level: float = 0.95) -> tuple[float, float, float]:
+    """均值与 t 分布置信区间（与 fig1 同一口径）。"""
+    from scipy import stats
+    x = np.asarray(x, dtype=float)
+    m = x.mean()
+    lo, hi = stats.t.interval(level, len(x) - 1, loc=m, scale=stats.sem(x))
+    return m, lo, hi
+
+
+def fig9_overview():
+    """总览：**基线 → 最终**，四个模型同图。
+
+    哑铃图（dumbbell）。灰点是旧配置、彩点是最终配置，中间连线带出"移动了多少"。
+    用位置编码而不是柱长——两者的分数差 0.03 左右，柱状图配截断轴会失真，
+    配从 0 起的轴又什么都看不出来。
+    """
+    base = _load("cv_5x5_raw.csv")                       # 原文 + 5000 维
+    fin = _load("model_metrics_routing_best_5x5.csv")    # routing + 50000 维 + sublinear
+    if base is None or fin is None:
+        return
+    b = dict(zip(base["Model"], base["macro_f1"]))
+    f = dict(zip(fin["模型"], fin["MacroF1均值"]))
+    models = sorted(f, key=f.get)                        # 升序 → 最好的画在最上面
+
+    fig, ax = plt.subplots(figsize=(9.6, 4.2))
+    y = np.arange(len(models))[::-1]
+    for yy, m in zip(y, models):
+        c = MODEL_COLORS[m]
+        ax.plot([b[m], f[m]], [yy, yy], color=c, linewidth=2.2, alpha=0.42,
+                solid_capstyle="round", zorder=2)
+        ax.plot([b[m]], [yy], "o", color=BASELINE, markersize=9,
+                markeredgecolor=SURFACE, markeredgewidth=1.8, zorder=4)
+        ax.plot([f[m]], [yy], "o", color=c, markersize=11.5,
+                markeredgecolor=SURFACE, markeredgewidth=2, zorder=5)
+        ax.text(f[m] + 0.0014, yy, f"{f[m]:.4f}", va="center", fontsize=10.5,
+                color=INK_PRIMARY, fontweight="bold")
+        ax.text(f[m] + 0.0108, yy, f"+{f[m]-b[m]:.4f}", va="center", fontsize=10,
+                color=c, fontweight="bold")
+        ax.text(b[m] - 0.0014, yy, f"{b[m]:.4f}", va="center", ha="right",
+                fontsize=9.5, color=INK_MUTED)
+
+    lo, hi = min(b.values()), max(f.values())
+    ax.set_xlim(lo - 0.008, hi + 0.019)
+    ax.set_yticks(y)
+    ax.set_yticklabels(models, color=INK_PRIMARY, fontsize=11)
+    ax.set_ylim(-0.6, len(models) - 0.4)
+    ax.grid(axis="y", visible=False)
+    ax.set_xlabel("Macro-F1（5 折 ×5 重复）")
+    # 图例必须放在坐标区**外面**：放里面会压住最下面那行（MLP 的点与标签）。
+    # 两个点的含义也不能只靠图例，正文里同时写明。
+    ax.plot([], [], "o", color=BASELINE, markersize=9, label="基线：原文 + 5000 维")
+    ax.plot([], [], "o", color=INK_MUTED, markersize=9,
+            label="最终：删路由头 + 50000 维 + sublinear_tf")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.17), ncols=2,
+              fontsize=9.5, labelcolor=INK_SECONDARY)
+    _title(ax, "最终成绩 vs 基线：四个模型都涨了，但涨幅不同",
+           "右端数字为最终 Macro-F1，后面的 +x 为相对基线的提升")
+    _save(fig, "fig9_overview.png")
+
+
+def fig10_gain_waterfall():
+    """增益分解瀑布：0.9156 →(清洗)→ 0.9189 →(TF-IDF 调参)→ 0.9434。
+
+    三段分数**全部从逐折分数现算**（model_fold_scores_*），不手抄任何数字——
+    手抄的值一旦和 CSV 对不上，图就成了新的错误来源。
+    两个增量柱上画的是配对差的 95% CI（同一批折逐折做差），不是独立均值的区间。
+    """
+    raw = _load("model_fold_scores_raw_5x5.csv", index_col=0)
+    mid = _load("model_fold_scores_routing_5x5.csv", index_col=0)
+    fin = _load("model_fold_scores_routing_best_5x5.csv", index_col=0)
+    if raw is None or mid is None or fin is None:
+        return
+    s_raw, s_mid, s_fin = raw["LinearSVC"], mid["LinearSVC"], fin["LinearSVC"]
+    lv = [s_raw.mean(), s_mid.mean(), s_fin.mean()]
+    d1, d1lo, d1hi = _mean_ci((s_mid - s_raw).to_numpy())
+    d2, d2lo, d2hi = _mean_ci((s_fin - s_mid).to_numpy())
+
+    floor = lv[0] - 0.005
+    fig, ax = plt.subplots(figsize=(8.8, 4.6))
+    xs = np.arange(4)
+    # 两端的"锚"用中性灰，中间的增量用蓝——颜色区分的是**性质**（水平 vs 增量）
+    ax.bar(0, lv[0] - floor, bottom=floor, width=0.55, color=BASELINE, zorder=3)
+    ax.bar(1, d1, bottom=lv[0], width=0.55, color=POS, zorder=3)
+    ax.bar(2, d2, bottom=lv[1], width=0.55, color=POS, zorder=3)
+    ax.bar(3, lv[2] - floor, bottom=floor, width=0.55, color=INK_SECONDARY, zorder=3)
+    for x, (lo, hi) in ((1, (d1lo, d1hi)), (2, (d2lo, d2hi))):
+        ax.plot([x, x], [lv[x - 1] + lo, lv[x - 1] + hi], color=INK_PRIMARY,
+                linewidth=1.4, zorder=4)
+        ax.plot([x - 0.09, x + 0.09], [lv[x - 1] + lo] * 2, color=INK_PRIMARY,
+                linewidth=1.4, zorder=4)
+        ax.plot([x - 0.09, x + 0.09], [lv[x - 1] + hi] * 2, color=INK_PRIMARY,
+                linewidth=1.4, zorder=4)
+    # 虚线把每级台阶接到下一根柱；**数值标签就贴在虚线上**。
+    # 早先标签放在柱顶，与增量柱的 95% CI 竖线叠在一起（渲染出来才发现）——
+    # 挪到虚线上既不挡竖线，也不挡柱顶。
+    for x, lvl in ((0, lv[0]), (1, lv[1]), (2, lv[2])):
+        ax.plot([x + 0.28, x + 0.72], [lvl, lvl], color=INK_MUTED,
+                linewidth=1, linestyle=(0, (3, 3)), zorder=2)
+        ax.text(x + 0.5, lvl + 0.0005, f"{lvl:.4f}", ha="center", va="bottom",
+                fontsize=10.5, color=INK_PRIMARY, fontweight="bold", zorder=6,
+                bbox=dict(boxstyle="round,pad=0.18", facecolor=SURFACE,
+                          edgecolor="none"))
+    for x, hi in ((1, d1hi), (2, d2hi)):
+        ax.text(x, lv[x - 1] + hi + 0.0022, f"+{[d1, d2][x - 1]:.4f}", ha="center",
+                va="bottom", fontsize=11, color=POS, fontweight="bold")
+
+    ax.set_xticks(xs)
+    ax.set_xticklabels(["基线\n原文 + 5000 维", "+ 删路由头\n（留 Subject）",
+                        "+ TF-IDF 调参\n50000 维 + sublinear", "最终\n交付配置"],
+                       fontsize=10)
+    ax.set_ylim(floor, lv[2] + 0.006)
+    ax.grid(axis="x", visible=False)
+    ax.set_ylabel("Macro-F1（LinearSVC，25 折）")
+    _title(ax, "最终成绩是两步挣来的，其中九成来自 TF-IDF 调参",
+           "纵轴从 %.3f 起（只影响柱高观感，标注的都是真实数值）· 增量柱上的竖线为配对差的 95%% CI"
+           % floor)
+    _save(fig, "fig10_gain_waterfall.png")
+
+
+def fig11_learning_curve():
+    """学习曲线：左=验证分，右=泛化间隙，横轴都是训练样本量。
+
+    拆成两个子图而不是画双纵轴——双纵轴（两个 y 刻度）是最常见的图表错误，
+    两条线的交点会被读成"相等"，而它没有意义。
+    """
+    d = _load("learning_curve.csv")
+    if d is None:
+        return
+    sizes = sorted(d["训练样本量"].unique())
+    fig, axes = plt.subplots(1, 2, figsize=(11.4, 4.3))
+
+    for m in MODEL_COLORS:
+        sub = d[d["模型"] == m].set_index("训练样本量").reindex(sizes)
+        val = np.array([_pm(v) for v in sub["验证-MacroF1"]])
+        gap = np.array([_pm(v) for v in sub["泛化间隙"]])
+        c = MODEL_COLORS[m]
+        for ax, arr, ylab in ((axes[0], val, "验证 Macro-F1"),
+                              (axes[1], gap, "泛化间隙（训练分 − 验证分）")):
+            ax.plot(sizes, arr[:, 0], color=c, linewidth=2, marker="o",
+                    markersize=6.5, markeredgecolor=SURFACE, markeredgewidth=1.5,
+                    label=m, zorder=3)
+            ax.fill_between(sizes, arr[:, 0] - arr[:, 1], arr[:, 0] + arr[:, 1],
+                            color=c, alpha=0.13, linewidth=0, zorder=2)
+            ax.set_xlabel("训练样本量")
+            ax.set_ylabel(ylab)
+    axes[0].set_xscale("log")
+    axes[1].set_xscale("log")
+    for ax in axes:
+        ax.set_xticks(sizes)
+        ax.set_xticklabels([f"{s:,}" for s in sizes])
+        ax.grid(axis="x", visible=False)
+    axes[0].legend(fontsize=9.5, labelcolor=INK_PRIMARY, ncols=2)
+    _title(axes[0], "验证分：数据越多越好，但 MLP 的追赶最猛",
+           "阴影为 5 折的标准差")
+    _title(axes[1], "泛化间隙：随数据量单调下降",
+           "600 条时 MLP 过拟合最重，全量时反而最小")
+    _save(fig, "fig11_learning_curve.png")
+
+
+def fig12_model_cost():
+    """成本：5000 维 → 50000 维的单折拟合耗时。
+
+    横轴是**对数**轴，因为四个模型跨越四个数量级（0.01s ~ 283s），线性轴会把
+    除 MLP 外的三个压成一条线。用点而不是柱——点用位置编码，对数轴上不构成失真；
+    每个点都直接标了秒数，信息不靠颜色或长度单独承载。
+    """
+    d = _load("model_cost_single_fold.csv")
+    if d is None:
+        return
+    if "模型" in d.columns:
+        d = d.set_index("模型")
+    cols = [c for c in d.columns if "维" in c]
+    c5, c50 = cols[0], cols[1]
+    models = ["NaiveBayes", "LogisticRegression", "LinearSVC", "MLP"]
+    models = [m for m in models if m in d.index]
+
+    fig, ax = plt.subplots(figsize=(9.2, 4.0))
+    y = np.arange(len(models))[::-1]
+    ax.set_xscale("log")
+    for yy, m in zip(y, models):
+        v5, v50 = float(d.loc[m, c5]), float(d.loc[m, c50])
+        c = MODEL_COLORS[m]
+        ax.plot([v5, v50], [yy, yy], color=c, linewidth=2.2, alpha=0.42,
+                solid_capstyle="round", zorder=2)
+        ax.plot([v5], [yy], "o", color=BASELINE, markersize=9,
+                markeredgecolor=SURFACE, markeredgewidth=1.8, zorder=4)
+        ax.plot([v50], [yy], "o", color=c, markersize=11.5,
+                markeredgecolor=SURFACE, markeredgewidth=2, zorder=5)
+        # 标签一律放在**远离另一个点**的那一侧。LinearSVC 的 50000 维反而更快，
+        # 它的点落在基线点左边——固定"标签往右"会正好压到另一个点上。
+        to_right = v50 >= v5
+        ax.annotate(f"{v50:.2f}s", (v50, yy), textcoords="offset points",
+                    xytext=(11 if to_right else -11, 0), va="center",
+                    ha="left" if to_right else "right", fontsize=10.5,
+                    color=INK_PRIMARY, fontweight="bold")
+        ax.annotate(f"{v5:.2f}s", (v5, yy), textcoords="offset points",
+                    xytext=(-11 if to_right else 11, 0), va="center",
+                    ha="right" if to_right else "left", fontsize=9.5,
+                    color=INK_MUTED)
+
+    ax.set_yticks(y)
+    ax.set_yticklabels(models, color=INK_PRIMARY, fontsize=11)
+    ax.set_ylim(-0.6, len(models) - 0.4)
+    ax.set_xlim(0.003, 700)
+    ax.grid(axis="y", visible=False)
+    ax.set_xlabel("单折拟合耗时（秒，对数轴）")
+    ax.plot([], [], "o", color=BASELINE, markersize=9, label="5000 维（基线）")
+    ax.plot([], [], "o", color=INK_MUTED, markersize=9, label="50000 维（最优）")
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.17), ncols=2,
+              fontsize=9.5, labelcolor=INK_SECONDARY)
+    _title(ax, "只有 MLP 的成本随维度爆炸：慢两个数量级",
+           "同一折、同一进程、背靠背测量；重复测量本身有 1.5~2.5 倍抖动，故只看量级")
+    _save(fig, "fig12_model_cost.png")
+
+
 FIGS = {
-    "fig1": fig1_model_comparison,
-    "fig2": fig2_cleaning_ladder,
+    "fig1": fig1_model_comparison,    "fig2": fig2_cleaning_ladder,
     "fig3": fig3_cleaning_forest,
     "fig4": fig4_max_features,
     "fig5": fig5_model_hyperparams,
     "fig6": fig6_tfidf_forest,
     "fig7": fig7_confusion_matrix,
     "fig8": fig8_per_class_f1,
+    "fig9": fig9_overview,
+    "fig10": fig10_gain_waterfall,
+    "fig11": fig11_learning_curve,
+    "fig12": fig12_model_cost,
 }
 
 

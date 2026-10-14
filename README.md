@@ -87,7 +87,7 @@ python main.py --tfidf-sweep      # §3.2 的 TF-IDF 参数扫描
 python main.py --model-sweep      # §3.3 的模型超参扫描
 python main.py --nested-cv        # §3.4 的嵌套交叉验证
 python main.py --model-paired-test --tfidf-preset best   # §4.2 的四模型对比
-python plots.py                   # 生成 figs/ 下全部 8 张图
+python plots.py                   # 生成 figs/ 下全部 12 张图
 python main.py --submit --models LinearSVC   # 【唯一会读取测试集】生成 predictions.csv
 ```
 
@@ -894,6 +894,10 @@ python plots.py --only fig4     # 只画某一张
 | `fig6_tfidf_forest.png` | TF-IDF 各参数效应森林图（双前提） | §3.2 |
 | `fig7_confusion_matrix.png` | 10×10 混淆矩阵 | §4.4 |
 | `fig8_per_class_f1.png` | 逐类别 F1（高混淆簇高亮） | §4.4 |
+| `fig9_overview.png` | **基线 → 最终**：四模型哑铃图 | §4.2 |
+| `fig10_gain_waterfall.png` | **增益分解瀑布**（两步各贡献多少） | §4.2 |
+| `fig11_learning_curve.png` | **学习曲线**：验证分 + 泛化间隙 | §4.5 |
+| `fig12_model_cost.png` | **单折成本**：5000 维 → 50000 维（对数轴） | §4.6 |
 
 ### 图表规范（自己定的，新图要遵守）
 
