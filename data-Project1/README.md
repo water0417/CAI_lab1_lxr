@@ -80,7 +80,22 @@ python main.py --smoke      # 先跑自检：600 条样本走通全流程，不�
 | `--model-paired-test` | **四模型对比 + 两两配对检验**（主结果） | 2.5~5.5 小时（MLP 占绝大部分） |
 | `--tfidf-preset best` | 配合上一项：用最优 TF-IDF 配置而非基线 | — |
 | `--learning-curve` | **学习曲线**：4 规模 × 4 模型的泛化间隙 | 28 分钟 |
-| `--submit` | ⚠ **唯一会读取测试集的命令**，生成 `predictions.csv` | 5 分钟 |
+| `--submit` | ⚠ **唯一会读取测试集的命令**，生成 `predictions.csv`。默认用正文选定的最优配置（见下） | 1 分钟（配 `--models LinearSVC`） |
+| `--final-config best\|baseline` | 配合 `--submit`：用哪套配置。**默认 `best`** = routing + 50000 维 + `sublinear_tf` | — |
+
+> **实际生成提交文件用的命令**（也是唯一跑过 `--submit` 的一次）：
+> ```bash
+> python main.py --submit --models LinearSVC
+> ```
+> 日志在 `../results/run_submit.log`。`--models LinearSVC` 是因为选型已由前面的
+> 四模型对比决定，没必要为了选型再跑一遍含 MLP 的 25 折（约 2~5 小时）。
+>
+> ⚠ **这里曾经有个 bug**：`--submit` 分支原先写的是 `make_pipeline()`（无参数），
+> 等于固定用"原文 + 5000 维"的 baseline，**与正文选出的配置无关**。
+> 后果是提交文件与报告里论证的方案不是一回事——而且因为 `--tfidf-preset` 默认
+> `baseline`，从命令行上完全看不出来。现已改为读 `--final-config`（默认 `best`），
+> 并把实际配置打印在日志里。同一次修复还加了一道护栏：非默认配置不再覆盖
+> `../results/cv_5x5.csv`（那是 README 引用的四模型基线表）。
 
 ### 通用开关
 

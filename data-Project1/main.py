@@ -447,7 +447,8 @@ SCORING = {
 
 def run_cv(models: dict, X, y, cv, n_jobs: int = 1,
            cfg: CleanConfig | None = None, quiet: bool = False,
-           label: str = "", fold_sink: dict | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+           label: str = "", fold_sink: dict | None = None,
+           tfidf: dict | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     """交叉验证，输出各指标的均值 ± 标准差。
 
     同时取回训练分数（return_train_score=True），用于计算泛化间隙
@@ -461,7 +462,7 @@ def run_cv(models: dict, X, y, cv, n_jobs: int = 1,
     """
     rows, raw = [], []
     for name, clf in models.items():
-        pipe = make_pipeline(cfg)
+        pipe = make_pipeline(cfg, **(tfidf or {}))
         pipe.set_params(clf=clf)
         t = time.time()
         r = cross_validate(pipe, X, y, cv=cv, scoring=SCORING,
@@ -1657,6 +1658,9 @@ def main() -> None:
                         help="并行度（默认 1；设 -1 用满 CPU，但会与 BLAS 线程竞争）")
     parser.add_argument("--submit", action="store_true",
                         help="【唯一会读取测试集的开关】在全体训练数据上重训最优模型并写 predictions.csv")
+    parser.add_argument("--final-config", choices=["best", "baseline"], default="best",
+                        help="--submit 用哪套配置：best（默认）= 正文选定的 routing + "
+                             "max_features=50000 + sublinear_tf；baseline = 原文 + 5000 维")
     parser.add_argument("--compare-splits", action="store_true",
                         help="跑划分方案对照实验：单次 80/20 与 5 折 CV 的估计稳定性（约 2 分钟）")
     parser.add_argument("--ablation", action="store_true",
@@ -2095,6 +2099,14 @@ def main() -> None:
         models = {k: v for k, v in models.items() if k in args.models}
     print(f"[模型] {list(models)}")
 
+    # --submit 时，CV 与最终模型都改用正文选定的配置，保证"评估的东西"和"提交的东西"是同一个。
+    # 其余运行路径保持默认（原文 + 5000 维基线），以免与 README/报告里的历史结果错位。
+    if args.submit and args.final_config == "best":
+        cv_cfg, cv_tf = CLEAN_PRESETS[BEST_PRESET], dict(BEST_TFIDF)
+        print(f"[提交] 配置 best：清洗 = {describe(cv_cfg)} | TF-IDF = {tfidf_label(cv_tf)}")
+    else:
+        cv_cfg, cv_tf = None, {}
+
     # ---- 6.3 交叉验证 ----
     cv = make_cv(args.folds, args.repeats)
     n_est = args.folds * max(args.repeats, 1)
@@ -2104,7 +2116,8 @@ def main() -> None:
         print(f"[提示] MLP 单折 25~50s（早停触发早晚不定），{n_est} 折实测约 20 分钟；"
               f"如只需快速结果可加 --models 跳过它")
     check_cv_folds(y_all, cv)
-    cv_df, cv_raw = run_cv(models, X_all, y_all, cv, n_jobs=args.jobs)
+    cv_df, cv_raw = run_cv(models, X_all, y_all, cv, n_jobs=args.jobs,
+                           cfg=cv_cfg, tfidf=cv_tf)
     print_table(f"{args.folds} 折 × {args.repeats} 次重复交叉验证 · 均值 ± 标准差", cv_df)
 
     # ---- 6.4 可选的单次划分对照 ----
@@ -2125,9 +2138,20 @@ def main() -> None:
 
     RESULT_DIR.mkdir(parents=True, exist_ok=True)
     cv_tag = f"{args.folds}x{args.repeats}"
-    cv_df.to_csv(RESULT_DIR / f"cv_{cv_tag}.csv", index=False, encoding="utf-8-sig")
-    cv_raw.to_csv(RESULT_DIR / f"cv_{cv_tag}_raw.csv", index=False, encoding="utf-8-sig")
-    print(f"[记录] 已保存 results/cv_{cv_tag}.csv 与 cv_{cv_tag}_raw.csv")
+    # cv_5x5.csv 是 README/报告引用的"四模型基线表"。只有跑**完整默认配置**时才写它；
+    # --submit 或 --models 子集都会改变表的内容，直接写进去等于把基线表覆盖掉且无法恢复。
+    canonical = (not args.submit) and cv_cfg is None and not cv_tf \
+        and len(models) == len(make_models())
+    if canonical:
+        cv_df.to_csv(RESULT_DIR / f"cv_{cv_tag}.csv", index=False, encoding="utf-8-sig")
+        cv_raw.to_csv(RESULT_DIR / f"cv_{cv_tag}_raw.csv", index=False, encoding="utf-8-sig")
+        print(f"[记录] 已保存 results/cv_{cv_tag}.csv 与 cv_{cv_tag}_raw.csv")
+    else:
+        why = "submit 诊断" if args.submit else "非基线配置"
+        cv_df.to_csv(RESULT_DIR / f"cv_{cv_tag}_submitdiag.csv",
+                     index=False, encoding="utf-8-sig")
+        print(f"[记录] {why}，改写 results/cv_{cv_tag}_submitdiag.csv"
+              f"（不覆盖基线表 cv_{cv_tag}.csv）")
     if holdout_df is not None:
         holdout_df.to_csv(RESULT_DIR / "holdout_val.csv", index=False, encoding="utf-8-sig")
         print("[记录] 已保存 results/holdout_val.csv")
@@ -2146,8 +2170,16 @@ def main() -> None:
     print(f"[测试集] 位置 {test_path}")
     print(f"[测试集] {n_test} 条 | 完整性校验通过 {file_fingerprint(test_path)}")
 
+    # 最终模型必须用**正文选定的那套配置**重建。
+    # 早先这里写的是 make_pipeline()（无参数），等于固定用"原文 + 5000 维"的 baseline，
+    # 与报告里选出的 routing + 50000 维 + sublinear_tf 不是一回事——
+    # 提交的东西和论证过的东西必须是同一个，否则整份调参白做。
+    print(f"[提交] 最终配置 {args.final_config}："
+          f"清洗 = {describe(cv_cfg) if cv_cfg else '不清理'} | "
+          f"TF-IDF = {tfidf_label(cv_tf) if cv_tf else 'max_features=5000（基线）'}")
+
     # 词表在全部训练数据上重新拟合（依然只接触训练数据）
-    final = make_pipeline()
+    final = make_pipeline(cv_cfg, **cv_tf)
     final.set_params(clf=make_models()[best_name])
     final.fit(X_all, y_all)
     preds = final.predict(X_test)

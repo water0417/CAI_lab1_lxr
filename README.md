@@ -88,7 +88,7 @@ python main.py --model-sweep      # §3.3 的模型超参扫描
 python main.py --nested-cv        # §3.4 的嵌套交叉验证
 python main.py --model-paired-test --tfidf-preset best   # §4.2 的四模型对比
 python plots.py                   # 生成 figs/ 下全部 8 张图
-python main.py --submit           # 【唯一会读取测试集】生成 predictions.csv
+python main.py --submit --models LinearSVC   # 【唯一会读取测试集】生成 predictions.csv
 ```
 
 各命令的详细说明见文末「命令速查」。
@@ -1022,7 +1022,12 @@ python plots.py --only fig4     # 只画某一张
 | `--model-sweep` | §3.3 模型超参扫描 | 15 分钟 |
 | `--nested-cv` | §3.4 嵌套交叉验证 | 6 分钟 |
 | `--model-paired-test --tfidf-preset best` | §4.2 四模型对比 | 2.5~5.5 小时（两次实测；MLP 占绝大部分，墙钟时间随负载波动，见 §4.6） |
-| `--submit` | **唯一读取测试集**，生成提交文件 | 5 分钟 |
+| `--submit --models LinearSVC` | **唯一读取测试集**，生成提交文件 | 1 分钟 |
 | `--jobs -1` | 并行（会与 BLAS 抢线程） | — |
 
 **注意 `--submit` 是唯一会碰测试集的开关。** 其他所有命令跑多少遍都不会读到它。
+
+**`--submit` 默认用正文选定的最优配置**（routing + 50000 维 + `sublinear_tf`），可用
+`--final-config baseline` 退回 5000 维基线对比。实际用的配置会打印在日志里——
+这里踩过一个坑：早先该分支硬编码 `make_pipeline()`，无论怎么调参，**提交的都是 baseline**，
+详见 `data-Project1/README.md`。
