@@ -10,6 +10,7 @@
 | `augment_semantic.py` | 303 | 语义级数据增强（LSA 词向量近邻替换），**独立模块** | 自己写 |
 | `make_term_shots.py` | 217 | 把运行日志渲染成终端风格 PNG（20 张，输出到 `../figs/term/`） | 自己写 |
 | `nb_alpha_check.py` | 67 | **调参对等性核查**：细化扫描 NB 的 alpha（见 `results/README.md` §9） | 自己写 |
+| `header_parts_check.py` | 96 | **邮件头逐部分对照**：Subject 行 / 其余头部 / 正文 / 全文各切一次 | 自己写 |
 | `draft_main.py` | 56 | 助教给的脚手架 | 助教，**原样保留** |
 | `TUNING.md` | — | 助教的调参指南（调参区间的依据） | 助教，**原样保留** |
 | `train_data.csv` | — | 7368 条，列 `text, target` | 助教 |

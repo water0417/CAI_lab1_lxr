@@ -1,6 +1,6 @@
 # results/ —— 实验结果索引
 
-本目录是**全部结论的数据来源**。共 70 个文件：**43 份结果 CSV + 27 份运行日志**。
+本目录是**全部结论的数据来源**。共 72 个文件：**45 份结果 CSV + 27 份运行日志**。
 
 ## 命名规则
 
@@ -42,12 +42,17 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 |---|---|---|
 | `ablation_clean_5x5.csv` | **13 个清洗配置的结果**（主表） | `python main.py --ablation` |
 | `paired_tests_5x5.csv` | 各配置相对原文的**配对 t 检验** | `python main.py --paired-test` |
+| `header_parts_5x5.csv` | **邮件头逐部分**对照：Subject 行 / 其余头部 / 正文 / 全文 | `python header_parts_check.py` |
+| `header_parts_fold_scores_5x5.csv` | 上者的逐折分数 | 同上 |
 | `fold_scores_5x5.csv` | 各配置的逐折分数 | `--ablation` |
 | `ablation_recheck_5x5.csv` | 最优配置上的**四模型复核** | `--ablation` |
 | `run_ablation.log` | 运行日志（含三张分组表 + 四模型复核表） | 同上 |
 | `run_paired_test.log` | 配对检验输出 | `--paired-test` |
 
 **对应报告**：§3.2 ｜ **截图 ⑤⑥⑯**
+
+> `header_parts_*` 是 2026-10-15 补做的：§3.2 原有的"邮件头逐部分"表里的四个分数
+> 在任何结果文件中都查不到（来自一次未落盘探索），已重跑并落盘。
 
 ---
 
