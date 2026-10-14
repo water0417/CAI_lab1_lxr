@@ -1,0 +1,9 @@
+[阶段 1] MLP 超参筛选：12 个组合 × 5 折（单次，与主表第 1 次重复同折）
+[阶段 1] 配置：routing + max_features=50000 + sublinear_tf；折级并行 n_jobs=5（OMP_NUM_THREADS=1）；跳过已完成 0 个
+
+  [ 1/12] MLP · hidden=50、alpha=0.0001                 Macro-F1=0.9411 ±0.0103 间隙=0.0510 (551s)
+  [ 2/12] MLP · hidden=50、alpha=0.001                  Macro-F1=0.9437 ±0.0064 间隙=0.0497 (477s)
+  [ 3/12] MLP · hidden=50、alpha=0.01                   Macro-F1=0.9428 ±0.0067 间隙=0.0506 (540s)
+  [ 4/12] MLP · hidden=100、alpha=0.0001                Macro-F1=0.9450 ±0.0063 间隙=0.0485 (760s)
+  [ 5/12] MLP · hidden=100、alpha=0.001                 Macro-F1=0.9455 ±0.0059 间隙=0.0480 (524s)
+  [ 6/12] MLP · hidden=100、alpha=0.01                  Macro-F1=0.9445 ±0.0063 间隙=0.0490 (789s)

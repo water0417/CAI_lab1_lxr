@@ -1,6 +1,11 @@
 # -*- coding: utf-8 -*-
 """MLP 超参搜索 —— 补上四个模型里最后一块"调参对等"的拼图。
 
+⚠️ 现状（2026-10-15）：**只跑了 12 组里的 6 组就停了**（用户决定收尾）。
+   已跑：(50,) 与 (100,) 两个结构 × 三个 alpha；未跑：(200,) 与 (100,50)。
+   结果存 mlp_screen_partial_5fold.csv，报告中按"部分筛选"如实标注。
+   要补全直接重跑本脚本即可（有断点续跑）。
+
 背景：§3.1 主表里四个模型都用库默认参数，但默认值离各自最优的远近差别极大。
 LinearSVC(C=1)、LR(C=100)、NB(alpha=0.1) 都已查明并调过；**只有 MLP 还是默认配置**，
 所以 §3.1 的"调参对等"表里它是唯一空着的一格。
@@ -37,8 +42,8 @@ import main as M
 
 GRID_HIDDEN = [(50,), (100,), (200,), (100, 50)]
 GRID_ALPHA = [1e-4, 1e-3, 1e-2]
-SCREEN_CSV = M.RESULT_DIR / "mlp_screen_5fold.csv"
-FOLD_CSV = M.RESULT_DIR / "mlp_screen_fold_scores.csv"
+SCREEN_CSV = M.RESULT_DIR / "mlp_screen_partial_5fold.csv"
+FOLD_CSV = M.RESULT_DIR / "mlp_screen_partial_fold_scores.csv"
 JOBS = int(os.environ.get("JOBS", "5"))
 
 
