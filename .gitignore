@@ -1,0 +1,19 @@
+# ── 测试集：绝不能被提交 ──
+# sealed/ 里是助教发放的原始测试集。把它排除在版本控制之外，是"气隙隔离"的一部分：
+# 物理上不在工作目录、代码上只有 --submit 能读、版本库里也不留痕。
+# 这样测试集既不会被误用，也不会上传到远端。
+sealed/
+
+# ── macOS 压缩包残渣 ──
+__MACOSX/
+.DS_Store
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*.egg-info/
+.ipynb_checkpoints/
+
+# ── 编辑器 ──
+.vscode/
+.idea/

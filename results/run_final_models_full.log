@@ -1,0 +1,11 @@
+[数据] 训练集 7368 条 | 类别数 10
+[指纹] train_data.csv  13748838 bytes, sha256:484667d165458da7
+[说明] 测试集已被隔离到 sealed/，本流程不会读取它
+
+[四模型对比] 清洗前提 routing（删路由头(留Subject)）
+[四模型对比] TF-IDF max_features=50000、sublinear_tf=True
+[CV] 5 折 × 5 次重复，四个模型共用同一批折
+
+  - NaiveBayes           MacroF1=0.9187 ± 0.0060  (113.6s)
+  - LogisticRegression   MacroF1=0.9280 ± 0.0062  (239.7s)
+  - LinearSVC            MacroF1=0.9434 ± 0.0062  (79.1s)

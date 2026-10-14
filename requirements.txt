@@ -1,0 +1,19 @@
+# 实验一依赖环境（conda env: AILab, Python 3.10）
+#
+# 复现方式：
+#   conda create -n AILab python=3.10 -y
+#   conda activate AILab
+#   conda install numpy pandas scikit-learn matplotlib -y
+#   pip install nltk
+#   # 或统一按锁定版本安装：
+#   pip install -r requirements.txt
+#
+# 注：nltk 只用到 PorterStemmer，它是纯 Python 实现，
+#     **不需要** nltk.download() 下载任何语料，无网络依赖。
+
+numpy==2.2.5
+pandas==2.3.3
+scipy==1.15.3
+scikit-learn==1.7.1
+matplotlib==3.10.9
+nltk==3.10.3
