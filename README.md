@@ -15,26 +15,33 @@ Lab1/
 ├── README.md                     本文件：实验全过程记录（含全部结论与证据索引）
 ├── 实验报告.md                   课程交付物：≤5 页实验报告
 ├── 实验思路.md                   每条结论"怎么做 / 检测什么 / 结论是什么"的索引
-├── 证据截图清单.md                17 张终端截图的取图命令与放置位置
+├── 证据截图清单.md                18 张终端证据截图的取图命令与放置位置
 ├── requirements.txt              依赖版本锁定
+├── .gitignore                    排除 sealed/ 与 macOS/Python 垃圾文件
 ├── 实验一要求.pdf                 任务书
 ├── sealed/                       ★ 测试集隔离区（见 §1.5）
-│   ├── README.md
+│   ├── README.md                   为什么隔离、指纹、如何核对
 │   └── test_data_unlabeled.csv   2457 条，提交文件的唯一输入
-├── figs/                         8 张结果性图表（曲线、对比、混淆矩阵）
-│   └── term/                     ★ 17 张终端证据截图 + 说明
-├── results/                      35 份结果 CSV + 19 份运行日志
+├── figs/                         8 张结果性图表
+│   ├── README.md                   每张图的内容、数据来源、图表规范
+│   └── term/                     ★ 18 张终端证据截图
+│       └── README.md               怎么生成、真实性说明
+├── results/                      41 份结果 CSV + 19 份运行日志
+│   └── README.md                 ★ 全部文件的索引：每个文件是什么、哪条命令产生
 └── data-Project1/
-    ├── main.py                   实验全流程（约 2100 行，带中文注释）
+    ├── README.md                 ★ 命令清单与模块说明
+    ├── main.py                   实验全流程（2176 行，带中文注释）
     ├── plots.py                  结果性图表生成（591 行）
     ├── evidence.py               过程性证据演示（4 项，秒级可重跑，供截图）
-    ├── augment_semantic.py       语义级增强的独立模块（不改 main.py）
+    ├── augment_semantic.py       语义级增强的独立模块（不改 main.py 一行）
     ├── make_term_shots.py        把运行日志渲染成终端风格 PNG
     ├── draft_main.py             助教给的脚手架（原样保留，只作参考）
     ├── TUNING.md                 助教的调参指南（调参区间的依据）
     ├── train_data.csv            7368 条，列：text, target
     └── predictions.csv           提交文件，由 --submit 生成
 ```
+
+**四个带 ★ 的 `README.md` 是分级索引**——根目录给全貌，子目录给细节。助教从任何一层进来都能找到该看的东西。
 
 ### `results/` 里都是什么
 
