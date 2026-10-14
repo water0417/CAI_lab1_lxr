@@ -1,6 +1,6 @@
 # results/ —— 实验结果索引
 
-本目录是**全部结论的数据来源**。共 60 个文件：**41 份结果 CSV + 19 份运行日志**。
+本目录是**全部结论的数据来源**。共 62 个文件：**38 份结果 CSV + 24 份运行日志**。
 
 ## 命名规则
 
@@ -110,12 +110,19 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 | `model_paired_tests_routing_best_5x5.csv` | 四模型两两配对检验 | 同上 |
 | `model_fold_scores_{raw,routing}_5x5.csv` | 5000 维下（raw / routing）的四模型逐折分数 | `--model-paired-test` |
 | `model_paired_tests_{raw,routing}_5x5.csv` | 对应的两两配对检验 | 同上 |
-| `run_final_models.log` / `run_final_models_full.log` | 运行日志 | 同上 |
+| `run_final_models.log` / `run_final_models_full.log` | **同一配置的两次独立运行**（详见下方） | 同上 |
 | `run_model_paired_{raw,routing}.log` | 5000 维两前提的运行日志 | 同上 |
 
-**对应报告**：§3.1 主结果 ｜ **截图 ⑩**
+**对应报告**：§3.1 主结果 ｜ **截图 ⑩⑲**
 
 > `routing_best` = 最优配置（routing + `max_features=50000` + `sublinear_tf=True` + LinearSVC C=1）。
+>
+> **两次运行的意义**：`run_final_models.log` 与 `run_final_models_full.log` 是**同一个配置跑了两遍**。
+> 两次的 Macro-F1 逐位相同（0.9445 / 0.9434 / 0.9280 / 0.9187），但耗时相差 1.6~2.9 倍
+> （MLP 7890 s vs 19457 s，LinearSVC 228 s vs 79 s）。
+> 这正是报告 §3.1 判定"**分数可复现、墙钟时间不可复现**"的直接依据——
+> 因此正文的耗时论断一律引用受控的单折测量（`evidence_4.log` / `evidence_5.log`），
+> 不引用这两次长任务的墙钟时间。
 
 ---
 
@@ -138,8 +145,14 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 | `evidence_2.log` | 恒等变换验证：交换词序 200/200 向量完全相同 | `python evidence.py 2` |
 | `evidence_3.log` | 错误分析：逐类别 F1、混淆对、类别特征词 | `python evidence.py 3` |
 | `evidence_4.log` | MLP 稠密化探测：维度、非零项数、单折计时 | `python evidence.py 4` |
+| `evidence_5.log` | 四模型单折受控计时（5000 维 vs 50000 维） | `python evidence.py 5` |
+| `model_cost_single_fold.csv` | 上者的结果表 | 同上 |
 
-**对应报告**：§2.3 / §3.2 / §四 / §5.2 ｜ **截图 ③④⑪⑫**
+**对应报告**：§2.3 / §3.2 / §三 / §3.5 / §5.2 ｜ **截图 ③④⑪⑫⑳**
+
+> **为什么耗时只看 `evidence_4/5.log`，不看 `run_final_models*.log`**：
+> 后者是几小时的长任务，墙钟时间把机器休眠也算了进去——同一配置跑两遍差 1.6~2.9 倍
+> （详见 §6 与 `../README.md` §4.6）。前者是 3~6 分钟的受控测量，同一折、同一进程。
 
 ---
 

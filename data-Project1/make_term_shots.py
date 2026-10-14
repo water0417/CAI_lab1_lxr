@@ -12,7 +12,7 @@
 每张图的正文第一行就是产生它的命令，可据此自行复现核对。
 
 用法：
-    python make_term_shots.py            # 生成全部 12 张
+    python make_term_shots.py            # 生成全部 20 张
     python make_term_shots.py 1 6        # 只生成指定编号
 """
 from __future__ import annotations
@@ -59,7 +59,7 @@ MAX_COLS = 170                             # 超过这个显示宽度的行会�
 
 
 # ---------------------------------------------------------------------------
-# 12 张图：编号 → (文件名, 标题, 生成命令)
+# 20 张图：编号 → (文件名, 标题, 生成命令)
 # ---------------------------------------------------------------------------
 SHOTS = {
     1: ("term_01_split_cv_vs_holdout.png",
@@ -116,6 +116,12 @@ SHOTS = {
     18: ("term_18_learning_curve.png",
          "证据 ⑱ · 学习曲线：四个训练规模下各模型的训练/验证分与泛化间隙",
          "sed -n '33,51p' results/run_learning_curve.log"),
+    19: ("term_19_final_metrics.png",
+         "证据 ⑲ · 最终结果：四模型完整指标与两两配对检验",
+         "sed -n '15,37p' results/run_final_models_full.log"),
+    20: ("term_20_model_cost.png",
+         "证据 ⑳ · 四模型单折受控计时（同一折、同一进程，5000 维 vs 50000 维）",
+         "cat results/evidence_5.log"),
 }
 
 

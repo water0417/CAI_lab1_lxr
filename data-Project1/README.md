@@ -6,7 +6,7 @@
 |---|---|---|---|
 | **`main.py`** | 2176 | **实验全流程**：划分、清洗、调参、评估、四模型对比、学习曲线 | 自己写 |
 | `plots.py` | 591 | 结果性图表生成（8 张，输出到 `../figs/`） | 自己写 |
-| `evidence.py` | 288 | 过程性证据演示（4 项，秒级可重跑，供截图） | 自己写 |
+| `evidence.py` | 322 | 过程性证据演示（5 项，秒级~6 分钟可重跑，供截图） | 自己写 |
 | `augment_semantic.py` | 303 | 语义级数据增强（LSA 词向量近邻替换），**独立模块** | 自己写 |
 | `make_term_shots.py` | 211 | 把运行日志渲染成终端风格 PNG（18 张，输出到 `../figs/term/`） | 自己写 |
 | `draft_main.py` | 56 | 助教给的脚手架 | 助教，**原样保留** |
@@ -77,7 +77,7 @@ python main.py --smoke      # 先跑自检：600 条样本走通全流程，不�
 
 | 命令 | 作用 | 耗时 |
 |---|---|---|
-| `--model-paired-test` | **四模型对比 + 两两配对检验**（主结果） | 145 分钟（MLP 占 131） |
+| `--model-paired-test` | **四模型对比 + 两两配对检验**（主结果） | 2.5~5.5 小时（MLP 占绝大部分） |
 | `--tfidf-preset best` | 配合上一项：用最优 TF-IDF 配置而非基线 | — |
 | `--learning-curve` | **学习曲线**：4 规模 × 4 模型的泛化间隙 | 28 分钟 |
 | `--submit` | ⚠ **唯一会读取测试集的命令**，生成 `predictions.csv` | 5 分钟 |
@@ -107,14 +107,17 @@ python plots.py --only fig4     # 只生成某一张
 ### `evidence.py` —— 过程性证据演示
 
 ```bash
-python evidence.py            # 列出全部 4 项
+python evidence.py            # 列出全部 5 项
 python evidence.py 1          # 测试集三道锁（0.1 秒）
 python evidence.py 2          # 恒等变换验证（0.8 秒）
 python evidence.py 3          # 错误分析（23 秒）
 python evidence.py 4          # MLP 稠密化探测（约 3 分钟）
+python evidence.py 5          # 四模型单折受控计时（约 6 分钟，写 model_cost_single_fold.csv）
 ```
 
 每项输出控制在一屏内，供截图使用。**可以现跑现截**——不像主实验那样耗时。
+落盘方式与其他实验一致，例如 `python evidence.py 5 > ../results/evidence_5.log`；
+报告里的截图 ③④⑪⑫⑳ 都取自这些日志文件。
 
 ### `augment_semantic.py` —— 语义级增强
 

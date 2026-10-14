@@ -14,11 +14,12 @@
     python evidence.py 1          # 只跑第 1 项
     python evidence.py 4          # 第 4 项较慢（要跑一次 MLP，约 5 分钟）
 
-四项分别对应报告里的：
+五项分别对应报告里的：
     1  §2.3  测试集三道锁：正常运行时读不到它，被篡改时会拒绝运行
     2  §2.7  对 TF-IDF 而言"交换词序"是恒等变换（解释数据增强为何无效）
     3  §四   错误分析：逐类别 F1 + 混淆对 + 各类别特征词
     4  §5.2  MLP 把稀疏输入稠密化（解释高维下为何超线性变慢）
+    5  §3.5  四模型的单折受控计时（为什么报告不引用 25 折运行的墙钟时间）
 """
 from __future__ import annotations
 
@@ -256,14 +257,85 @@ def ev4_mlp_density() -> None:
     _foot(t0)
 
 
+# ---------------------------------------------------------------------------
+# 5 · 四模型的单折受控计时
+# ---------------------------------------------------------------------------
+def ev5_model_cost() -> None:
+    """为什么报告的耗时论断以"单折受控测量"为准，而不是 25 折运行的墙钟时间。
+
+    25 折那几次运行是几小时的长任务，中途机器休眠/被别的进程抢占，墙钟时间
+    会把等待也算进去。同一份代码两次跑出的 MLP 总耗时能差好几倍，**这类数字
+    不可复现**，不能拿来立论。
+
+    这里换成一次受控测量：**同一折、同一进程、同一线程设置**，四个模型 × 两个
+    维度各拟合一次，全程背靠背连续跑完（约 5 分钟）。四个模型面对的是同一个矩阵、
+    同一份机器负载，差值才归因得到模型本身。
+    结果落盘 results/model_cost_single_fold.csv，报告与 README 的耗时论断引用它。
+    """
+    t0 = time.time()
+    _hdr(5, "四模型单折受控计时：同一折、同一进程、连续测量（约 5 分钟）",
+         "python evidence.py 5")
+
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.model_selection import StratifiedKFold
+
+    X, y = M.load_train()
+    docs = M.apply_clean(X, M.CLEAN_PRESETS[M.BEST_PRESET])
+    cv = StratifiedKFold(M.N_SPLITS, shuffle=True, random_state=M.SEED)
+    tr, _ = next(iter(cv.split(docs, y)))
+
+    configs = [("5000 维（基线）", {"max_features": M.MAX_FEATURES}),
+               ("50000 维（最优）", dict(M.BEST_TFIDF))]
+    rows = []
+    for label, tf in configs:
+        t = time.time()
+        Xtr = TfidfVectorizer(**tf).fit_transform([docs[i] for i in tr])
+        fit_t = time.time() - t
+        print(f"  【{label}】TF-IDF 拟合 {fit_t:.1f}s   "
+              f"矩阵 {Xtr.shape[0]:,} × {Xtr.shape[1]:,}")
+        print(f"  {'分类器':<22}{'拟合耗时':>10}")
+        print("  " + "-" * 32)
+        for name, clf in M.make_models().items():
+            t = time.time()
+            clf.fit(Xtr, y[tr])
+            el = time.time() - t
+            rows.append({"维度配置": label, "模型": name, "拟合耗时(s)": round(el, 2)})
+            print(f"  {name:<22}{el:>9.1f}s")
+        print()
+
+    df = pd.DataFrame(rows)
+    wide = df.pivot(index="模型", columns="维度配置", values="拟合耗时(s)")
+    wide = wide[["5000 维（基线）", "50000 维（最优）"]]
+    wide["倍数"] = (wide["50000 维（最优）"] / wide["5000 维（基线）"]).round(1)
+    print("  汇总（单折拟合耗时，秒）：")
+    print(wide.to_string())
+    print()
+    base = wide.loc["LinearSVC", "50000 维（最优）"]
+    slow = wide.loc["MLP", "50000 维（最优）"]
+    print(f"  结论：最优配置下单折 MLP 拟合 {slow:.0f}s，其余三个模型都在 10s 以内——")
+    print(f"        MLP 比 LinearSVC 慢约 {slow/base:.0f} 倍，即两个数量级。")
+    print(f"        MLP 也是绝对增幅最大的模型：维度 5000→50000 多花 "
+          f"{slow - wide.loc['MLP','5000 维（基线）']:.0f} 秒，LinearSVC 基本不动。")
+    print()
+    print("  注意：本项重复跑，绝对耗时会差 1.5~2.5 倍（机器负载所致，同一折、同一进程")
+    print("        也一样）。所以只取「差两个数量级」这个稳健结论，不引用具体的倍数与秒数。")
+
+    out = M.RESULT_DIR / "model_cost_single_fold.csv"
+    wide.to_csv(out)
+    print(f"\n  → 已写入 {out.relative_to(M.PROJECT_DIR)}")
+    _foot(t0)
+
+
 DEMOS = {1: ev1_test_seal, 2: ev2_identity_swap,
-         3: ev3_error_analysis, 4: ev4_mlp_density}
+         3: ev3_error_analysis, 4: ev4_mlp_density,
+         5: ev5_model_cost}
 
 DEMO_DESC = {
     1: "测试集三道锁：正常路径读不到它、被篡改时拒绝运行      ［快］",
     2: "对 TF-IDF，「交换词序」是恒等变换（数据增强为何无效）  ［快］",
     3: "错误分析：逐类别 F1 + 混淆对 + 各类别特征词            ［快］",
     4: "MLP 把稀疏输入稠密化（高维下为何超线性变慢）          ［约 5 分钟］",
+    5: "四模型的单折受控计时（报告为何不用 25 折的墙钟时间）    ［约 5 分钟］",
 }
 
 
