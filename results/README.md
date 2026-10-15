@@ -1,6 +1,6 @@
 # results/ —— 实验结果索引
 
-本目录是**全部结论的数据来源**。共 90 个文件：**56 份结果 CSV + 34 份运行日志**。
+本目录是**全部结论的数据来源**。共 86 个文件：**54 份结果 CSV + 32 份运行日志**。
 
 ## 命名规则
 
@@ -16,9 +16,10 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 | `_raw` 后缀 | — | 同一次运行的**机器可读版**（主表是格式化版；`_raw` 是未格式化的浮点原值） |
 | `_fold_scores` | — | 每折的原始分数，**配对检验的唯一输入**（均值不够用） |
 
-> **`run_tfidf_final.log` / `run_tfidf_refill.log` / `run_tfidf_restore.log` 是补数据的运行记录**：
-> 整理过程中发现逐折分数表缺了几列（续跑逻辑的静默覆盖问题），这三次运行是分步补齐的过程。
-> 保留它们是为了让"数据是怎么补回来的"也可追溯，而非隐藏。
+> **`run_tfidf_restore.log` 是补数据的运行记录**：
+> 整理过程中发现逐折分数表缺了几列（续跑逻辑的静默覆盖问题），这次运行把缺的配置补齐了。
+> 保留它是为了让"数据是怎么补回来的"也可追溯，而非隐藏。
+> （另两次高度重复的补跑日志 `run_tfidf_final.log` / `run_tfidf_refill.log` 已删除。）
 
 ---
 
@@ -85,7 +86,7 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 | `tfidf_fold_scores_{raw,routing}_5x5.csv` | 逐折分数 | 同上 |
 | `run_tfidf_sweep.log` | 单参数敏感性扫描日志 | 同上 |
 | `run_tfidf_combo3.log` | 参数组合扫描日志（含完整 16 配置） | 同上 |
-| `run_tfidf_final.log`、`run_tfidf_refill.log`、`run_tfidf_restore.log` | 补齐缺失列的三次运行记录 | 见上方说明 |
+| `run_tfidf_restore.log` | 补齐缺失列的那次运行记录 | 见上方说明 |
 
 **对应报告**：§3.3 ｜ **截图 ⑦⑰**
 
@@ -113,8 +114,8 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 | **`model_metrics_routing_best_5x5.csv`** | **最终结果表**：Accuracy / Macro-F1 / Weighted-F1 / 训练分 / 泛化间隙 / 耗时 | `python main.py --model-paired-test --tfidf-preset best` |
 | `model_fold_scores_routing_best_5x5.csv` | 逐折分数（配对检验输入） | 同上 |
 | `model_paired_tests_routing_best_5x5.csv` | 四模型两两配对检验 | 同上 |
-| `model_fold_scores_{raw,routing}_5x5.csv` | 5000 维下（raw / routing）的四模型逐折分数 | `--model-paired-test` |
-| `model_paired_tests_{raw,routing}_5x5.csv` | 对应的两两配对检验 | 同上 |
+| `model_fold_scores_raw_5x5.csv` / `model_fold_scores_routing_baseline_5x5.csv` | 5000 维下（raw / routing）的四模型逐折分数 | `--model-paired-test` |
+| `model_paired_tests_raw_5x5.csv` / `model_paired_tests_routing_baseline_5x5.csv` | 对应的两两配对检验 | 同上 |
 | `run_final_models.log` / `run_final_models_full.log` | **同一配置的两次独立运行**（详见下方） | 同上 |
 | `run_model_paired_{raw,routing}.log` | 5000 维两前提的运行日志 | 同上 |
 

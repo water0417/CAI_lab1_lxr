@@ -192,7 +192,7 @@ def fig2_cleaning_ladder():
     """阶梯画的是**相对基线的变化量**，不是绝对分数。
 
     绝对分数的差异只有 0.006~0.031，画在 0.86~0.94 的纵轴上基本看不出高低；
-    直接画 Δ 才能让"每加一步就往下走"这个结论一眼可见。
+    直接画 Δ 才能让"除第一步外，每加一步都往下走"这个结论一眼可见。
     绝对分数用次要标注补在 Δ 下方，两者都不丢。
     """
     df = _load("ablation_clean_5x5.csv")
@@ -227,7 +227,7 @@ def fig2_cleaning_ladder():
     ax.set_xticklabels(labels, rotation=20, ha="right", color=INK_PRIMARY, fontsize=10)
     ax.set_ylabel("Macro-F1 相对基线的变化 Δ")
     ax.grid(axis="x", visible=False)
-    _title(ax, "文本清洗的累积阶梯：每加一步，分数就往下走",
+    _title(ax, "文本清洗的累积阶梯：除第一步外，每加一步分数都在掉",
            "前提 raw 起步 · LinearSVC · max_features=5000 · 括号内为绝对分数，25 折")
     _save(fig, "fig2_cleaning_ladder.png")
 
@@ -650,7 +650,7 @@ def fig10_gain_waterfall():
     两个增量柱上画的是配对差的 95% CI（同一批折逐折做差），不是独立均值的区间。
     """
     raw = _load("model_fold_scores_raw_5x5.csv", index_col=0)
-    mid = _load("model_fold_scores_routing_5x5.csv", index_col=0)
+    mid = _load("model_fold_scores_routing_baseline_5x5.csv", index_col=0)   # 5000 维（routing 前提）
     fin = _load("model_fold_scores_routing_best_5x5.csv", index_col=0)
     if raw is None or mid is None or fin is None:
         return
