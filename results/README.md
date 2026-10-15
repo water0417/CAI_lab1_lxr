@@ -1,6 +1,6 @@
 # results/ —— 实验结果索引
 
-本目录是**全部结论的数据来源**。共 84 个文件：**52 份结果 CSV + 32 份运行日志**。
+本目录是**全部结论的数据来源**。共 86 个文件：**54 份结果 CSV + 32 份运行日志**。
 
 ## 命名规则
 
@@ -120,7 +120,17 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 
 **对应报告**：§3.1 主结果 ｜ **截图 ⑩⑲**
 
-> `routing_best` = 最优配置（routing + `max_features=50000` + `sublinear_tf=True` + LinearSVC C=1）。
+> **`routing_best` 里的 "best" 指的是 TF-IDF 配置最优**（routing + `max_features=50000` + `sublinear_tf=True`），
+> **不是"模型超参最优"**。⚠️ 该表里四个模型的超参**都是 sklearn 默认值**：
+> LinearSVC `C=1`、LR `C=1`、NB `alpha=1.0`、MLP `(100,)`、`alpha=1e-4`。
+>
+> 这些默认值**离各自最优的远近差别极大**——LinearSVC 与 MLP 的默认恰好就在最优附近，
+> 而 LR 与 NB 的默认偏离很远（详见 `../实验报告.md` §3.1 的 ⚠️ 警示块）。
+>
+> **本文件自 2026-10-14 首次生成后未再改动，这是刻意的**：它记录的是**原配置口径**的结果，
+> 与报告 §3.1 主表一一对应。各模型调到自身最优后的结果**另存于**：
+> `tuning_fairness_5x5.csv`（LR → C=100）、`nb_alpha_sweep_5x5.csv`（NB → alpha=0.1）、
+> `mlp_tuned_25fold_5x5.csv`（MLP → alpha=1e-3，收益为 0）。
 >
 > **两次运行的意义**：`run_final_models.log` 与 `run_final_models_full.log` 是**同一个配置跑了两遍**。
 > 两次的 Macro-F1 逐位相同（0.9445 / 0.9434 / 0.9280 / 0.9187），但耗时相差 1.6~2.9 倍
@@ -188,6 +198,11 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 | `nb_alpha_sweep_5x5.csv` | **NB 的 alpha 细化扫描**（0.03~0.3，最优 0.1） | `python nb_alpha_check.py` |
 | `nb_alpha_fold_scores_5x5.csv` | 上者的逐折分数 | 同上 |
 | `run_tuning_fairness.log` / `run_nb_alpha_fine.log` | 运行日志 | 同上 |
+| `mlp_tuned_25fold_5x5.csv` | **MLP 最优配置的 25 折确认**（`(100,)`, alpha=1e-3） | `python mlp_tune.py confirm "(100,)" 1e-3` |
+| `mlp_tuned_fold_scores_5x5.csv` | 上者的逐折分数 | 同上 |
+| `run_mlp_confirm.log` | 运行日志 | 同上 |
+| `model_metrics_routing_baseline_5x5.csv` 等 3 份 | **5000 维**下的四模型完整指标 / 逐折分数 / 配对检验 | `python main.py --model-paired-test` |
+| `run_final_models_5000dim.log` | 上者的运行日志 | 同上 |
 | `mlp_screen_5fold.csv` | **MLP 超参完整网格**：4 种结构 × 3 个 alpha = 12 组 | `python mlp_tune.py screen` |
 | `mlp_screen_fold_scores.csv` | 上者的逐折分数 | 同上 |
 | `run_mlp_screen.log` | 运行日志 | 同上 |
@@ -196,7 +211,7 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 
 | 模型 | 主表值 | 自身最优 | 调参后 | 变化 |
 |---|---|---|---|---|
-| MLP | 0.9445 | 完整网格最优仍是 `(100,)` | —（25 折确认跑中） | — |
+| MLP | 0.9445 | 完整网格最优仍是 `(100,)`，alpha=1e-3 | **0.9445** | **±0.0000** |
 | LinearSVC | 0.9434 | C=1 | 0.9434 | — |
 | LogisticRegression | 0.9280 | C=100 | **0.9405** | **+0.0125** |
 | NaiveBayes | 0.9187 | alpha=0.1 | **0.9391** | **+0.0204** |
