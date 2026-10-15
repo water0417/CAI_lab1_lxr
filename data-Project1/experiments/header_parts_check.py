@@ -24,6 +24,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression  # noqa: F401  (仅为保持与主流程一致的导入面)
 from sklearn.pipeline import Pipeline
 
+import os as _os, sys as _sys
+# 本文件位于子目录，而 main.py 在上一级——把它加进 sys.path 才能 import 到 main。
+# main.py 里的路径常量（M.RESULT_DIR / M.FIG_DIR / M.TRAIN_CSV）都以 main.py 自身
+# 的位置为锚，所以本文件搬家不影响它们。
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 import main as M
 
 HEADER_RE = re.compile(

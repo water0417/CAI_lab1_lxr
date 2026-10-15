@@ -37,8 +37,8 @@ except KeyError:
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-HERE = Path(__file__).resolve().parent
-LAB = HERE.parent
+HERE = Path(__file__).resolve().parent   # data-Project1/evidence/
+LAB = HERE.parent.parent                  # Lab1/（本文件搬到 evidence/ 后要上溯两级）
 OUT = LAB / "figs" / "term"
 
 # ---- 终端配色（深色主题，贴近 VS Code 默认终端）----

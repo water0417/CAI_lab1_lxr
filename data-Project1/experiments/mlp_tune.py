@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 """MLP 超参搜索 —— 补上四个模型里最后一块"调参对等"的拼图。
 
-⚠️ 现状（2026-10-15）：**只跑了 12 组里的 6 组就停了**（用户决定收尾）。
-   已跑：(50,) 与 (100,) 两个结构 × 三个 alpha；未跑：(200,) 与 (100,50)。
-   结果存 mlp_screen_5fold.csv，报告中按"部分筛选"如实标注。
-   要补全直接重跑本脚本即可（有断点续跑）。
+已完成：12 组（4 种结构 × 3 个 alpha）全部跑完，结果存 mlp_screen_5fold.csv
+   （5 折单次）；最优配置另做了 25 折确认，存 mlp_tuned_25fold_5x5.csv。
+   结论：默认结构 (100,) 即最优；加宽/加深都更差；调参收益为 0。
+   （本脚本有断点续跑：中断后再跑会自动跳过已完成的组合。）
 
 背景：§3.1 主表里四个模型都用库默认参数，但默认值离各自最优的远近差别极大。
 LinearSVC(C=1)、LR(C=100)、NB(alpha=0.1) 都已查明并调过；**只有 MLP 还是默认配置**，
@@ -38,6 +38,11 @@ import pandas as pd
 from sklearn.model_selection import StratifiedKFold, cross_validate
 from sklearn.neural_network import MLPClassifier
 
+import os as _os, sys as _sys
+# 本文件位于子目录，而 main.py 在上一级——把它加进 sys.path 才能 import 到 main。
+# main.py 里的路径常量（M.RESULT_DIR / M.FIG_DIR / M.TRAIN_CSV）都以 main.py 自身
+# 的位置为锚，所以本文件搬家不影响它们。
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 import main as M
 
 GRID_HIDDEN = [(50,), (100,), (200,), (100, 50)]

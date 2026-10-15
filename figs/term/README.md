@@ -6,8 +6,8 @@
 
 ```bash
 cd ../../data-Project1
-python make_term_shots.py          # 重新生成全部 12 张
-python make_term_shots.py 3 6      # 只重生成指定编号
+python evidence/make_term_shots.py          # 重新生成全部 20 张
+python evidence/make_term_shots.py 3 6      # 只重生成指定编号
 ```
 
 **关于真实性**：图片内容是日志文件的**原样输出**（含耗时、警告、文件路径）；

@@ -42,7 +42,7 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 |---|---|---|
 | `ablation_clean_5x5.csv` | **13 个清洗配置的结果**（主表） | `python main.py --ablation` |
 | `paired_tests_5x5.csv` | 各配置相对原文的**配对 t 检验** | `python main.py --paired-test` |
-| `header_parts_5x5.csv` | **邮件头逐部分**对照：Subject 行 / 其余头部 / 正文 / 全文 | `python header_parts_check.py` |
+| `header_parts_5x5.csv` | **邮件头逐部分**对照：Subject 行 / 其余头部 / 正文 / 全文 | `python experiments/header_parts_check.py` |
 | `header_parts_fold_scores_5x5.csv` | 上者的逐折分数 | 同上 |
 | `fold_scores_5x5.csv` | 各配置的逐折分数 | `--ablation` |
 | `ablation_recheck_5x5.csv` | 最优配置上的**四模型复核** | `--ablation` |
@@ -68,7 +68,7 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 | `augment_robust_paired_drop_5x5.csv` | 配对检验 B：**降幅** | 同上 |
 | `augment_label_integrity_5x5.csv` | **标签保持性抽检**：删除 20% 后各类别关键词存活 | 同上 |
 | `augment_robust_fold_scores_5x5.csv` | 逐折分数 | 同上 |
-| `semantic_aug_5x5.csv` | **语义级增强**（LSA 词向量近邻替换） | `python augment_semantic.py` |
+| `semantic_aug_5x5.csv` | **语义级增强**（LSA 词向量近邻替换） | `python experiments/augment_semantic.py` |
 | `semantic_aug_fold_scores_5x5.csv` | 逐折分数（可与结构扰动做同折配对） | 同上 |
 | `run_augment.log` / `run_augment_robust.log` / `run_semantic_aug.log` | 三者的运行日志 | 同上 |
 
@@ -156,13 +156,13 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 
 | 文件 | 内容 | 产生命令 |
 |---|---|---|
-| `evidence_1.log` | 测试集三道锁：指纹、唯一调用点、篡改 1 字节被拦截 | `python evidence.py 1` |
-| `evidence_2.log` | 恒等变换验证：交换词序 200/200 向量完全相同 | `python evidence.py 2` |
-| `evidence_3.log` | 错误分析：逐类别 F1、混淆对、类别特征词 | `python evidence.py 3` |
-| `evidence_4.log` | MLP 稠密化探测：维度、非零项数、单折计时 | `python evidence.py 4` |
-| `evidence_5.log` | 四模型单折受控计时（5000 维 vs 50000 维） | `python evidence.py 5` |
+| `evidence_1.log` | 测试集三道锁：指纹、唯一调用点、篡改 1 字节被拦截 | `python evidence/evidence.py 1` |
+| `evidence_2.log` | 恒等变换验证：交换词序 200/200 向量完全相同 | `python evidence/evidence.py 2` |
+| `evidence_3.log` | 错误分析：逐类别 F1、混淆对、类别特征词 | `python evidence/evidence.py 3` |
+| `evidence_4.log` | MLP 稠密化探测：维度、非零项数、单折计时 | `python evidence/evidence.py 4` |
+| `evidence_5.log` | 四模型单折受控计时（5000 维 vs 50000 维） | `python evidence/evidence.py 5` |
 | `model_cost_single_fold.csv` | 上者的结果表 | 同上 |
-| `model_cost_final_config_5x5.csv` | **表 3-1 ① 部分最终配置**的受控单折成本（四模型同折同进程） | `python cost_probe_final.py` |
+| `model_cost_final_config_5x5.csv` | **表 3-1 ① 部分最终配置**的受控单折成本（四模型同折同进程） | `python experiments/cost_probe_final.py` |
 | `run_cost_probe_final.log` | 上者的运行日志 | 同上 |
 
 **对应报告**：§2.3 / §3.2 / §三 / §3.5 / §5.2 ｜ **截图 ③④⑪⑫⑳**
@@ -197,17 +197,17 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 |---|---|---|
 | `tuning_fairness_5x5.csv` | LR 在 C=1/10/100、NB 在 alpha=1.0/0.1/0.01 下的结果 | `python -` (见 `run_tuning_fairness.log`) |
 | `tuning_fairness_fold_scores_5x5.csv` | 上者的逐折分数（配对检验输入） | 同上 |
-| `nb_alpha_sweep_5x5.csv` | **NB 的 alpha 细化扫描**（0.03~0.3，最优 0.1） | `python nb_alpha_check.py` |
+| `nb_alpha_sweep_5x5.csv` | **NB 的 alpha 细化扫描**（0.03~0.3，最优 0.1） | `python experiments/nb_alpha_check.py` |
 | `nb_alpha_fold_scores_5x5.csv` | 上者的逐折分数 | 同上 |
 | `run_tuning_fairness.log` / `run_nb_alpha_fine.log` | 运行日志 | 同上 |
-| `model_metrics_tuned_5x5.csv` | **LR(C=100) 与 NB(alpha=0.1) 调参后的完整指标**（与主表逐格可比） | `python tuned_metrics.py` |
+| `model_metrics_tuned_5x5.csv` | **LR(C=100) 与 NB(alpha=0.1) 调参后的完整指标**（与主表逐格可比） | `python experiments/tuned_metrics.py` |
 | `run_tuned_metrics.log` | 上者的运行日志 | 同上 |
-| `mlp_tuned_25fold_5x5.csv` | **MLP 最优配置的 25 折确认**（`(100,)`, alpha=1e-3） | `python mlp_tune.py confirm "(100,)" 1e-3` |
+| `mlp_tuned_25fold_5x5.csv` | **MLP 最优配置的 25 折确认**（`(100,)`, alpha=1e-3） | `python experiments/mlp_tune.py confirm "(100,)" 1e-3` |
 | `mlp_tuned_fold_scores_5x5.csv` | 上者的逐折分数 | 同上 |
 | `run_mlp_confirm.log` | 运行日志 | 同上 |
 | `model_metrics_routing_baseline_5x5.csv` 等 3 份 | **5000 维**下的四模型完整指标 / 逐折分数 / 配对检验 | `python main.py --model-paired-test` |
 | `run_final_models_5000dim.log` | 上者的运行日志 | 同上 |
-| `mlp_screen_5fold.csv` | **MLP 超参完整网格**：4 种结构 × 3 个 alpha = 12 组 | `python mlp_tune.py screen` |
+| `mlp_screen_5fold.csv` | **MLP 超参完整网格**：4 种结构 × 3 个 alpha = 12 组 | `python experiments/mlp_tune.py screen` |
 | `mlp_screen_fold_scores.csv` | 上者的逐折分数 | 同上 |
 | `run_mlp_screen.log` | 运行日志 | 同上 |
 
@@ -238,7 +238,7 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 
 | 文件 | 内容 | 产生命令 |
 |---|---|---|
-| `random_label_control_5x5.csv` | **随机标签对照**：真实 vs 打乱标签 × 5000/50000 维的训练分与验证分 | `python probe_q1q2.py`（实验 A） |
+| `random_label_control_5x5.csv` | **随机标签对照**：真实 vs 打乱标签 × 5000/50000 维的训练分与验证分 | `python experiments/probe_q1q2.py`（实验 A） |
 | `mlp_epoch_probe_5fold.csv` | **MLP 迭代次数诊断**：三种训练预算的迭代数、训练分、验证分 | 同上（实验 B） |
 | `run_random_label_control.log` / `run_probe_epochs.log` | 两者的运行日志 | 同上 |
 

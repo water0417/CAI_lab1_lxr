@@ -29,16 +29,14 @@ Lab1/
 ├── results/                      41 份结果 CSV + 19 份运行日志
 │   └── README.md                 ★ 全部文件的索引：每个文件是什么、哪条命令产生
 └── data-Project1/
-    ├── README.md                 ★ 命令清单与模块说明
-    ├── main.py                   实验全流程（2176 行，带中文注释）
-    ├── plots.py                  结果性图表生成（591 行）
-    ├── evidence.py               过程性证据演示（4 项，秒级可重跑，供截图）
-    ├── augment_semantic.py       语义级增强的独立模块（不改 main.py 一行）
-    ├── make_term_shots.py        把运行日志渲染成终端风格 PNG
-    ├── draft_main.py             助教给的脚手架（原样保留，只作参考）
-    ├── TUNING.md                 助教的调参指南（调参区间的依据）
+    ├── README.md                 ★ 命令清单与目录说明
+    ├── main.py                   主实验全流程（2208 行，唯一入口）
+    ├── plots.py                  结果性图表生成（834 行）
     ├── train_data.csv            7368 条，列：text, target
-    └── predictions.csv           提交文件，由 --submit 生成
+    ├── predictions.csv           提交文件，由 --submit 生成
+    ├── experiments/              补充实验：每个回答一个具体问题（8 个脚本）
+    ├── evidence/                 证据生成：过程性演示 + 终端截图（2 个脚本）
+    └── reference/                助教原件（draft_main.py、TUNING.md，原样保留）
 ```
 
 **四个带 ★ 的 `README.md` 是分级索引**——根目录给全貌，子目录给细节。助教从任何一层进来都能找到该看的东西。
@@ -435,14 +433,14 @@ python main.py --augment-robust     # 约 23 分钟
 
 上面测的都是**结构扰动**——删词、换词序，只改数量与顺序，不改词本身。任务书要求"增强方法必须符合数据语义"（§2.1 已列出），所以又补了**语义级**的那一半：把词替换成它的**分布近邻词**。
 
-独立模块 `augment_semantic.py`（`main.py` 一行未改），三条设计约束：
+独立模块 `experiments/augment_semantic.py`（`main.py` 一行未改），三条设计约束：
 
 1. **无新依赖** —— 词向量由语料自身的 TF-IDF 经 `TruncatedSVD`（LSA）得到，不用 gensim、不下载预训练词向量。
 2. **折内构建** —— 词向量、近邻表、类内关联都**只在当前折的训练部分**上估计。若在全量语料上建好再用，验证集信息会通过词的共现结构渗进训练数据，比"先增广再划分"更隐蔽。
 3. **只在同类内替换** —— 候选近邻必须满足 `P(c|w)/P(c) > 1`。否则会把汽车类的 `drive` 换成磁盘类的 `disk`，而 `drive` 恰好跨这两个类。
 
 ```bash
-python augment_semantic.py      # 约 15 分钟
+python experiments/augment_semantic.py      # 约 15 分钟
 ```
 
 | 增强方式 | 干净验证集 | 扰动验证集 | 降幅 | 实际替换词元比例 |
@@ -876,7 +874,7 @@ python main.py --learning-curve     # 4 个规模 × 4 个模型 × 5 折，约 
 两次的 **Macro-F1 逐位相同**（0.9445 / 0.9434 / 0.9280 / 0.9187），耗时却差 1.6~2.9 倍
 ——墙钟时间把机器休眠、后台进程、CPU 降频都算了进去，而分数不会。
 
-**所以改用受控单折测量**（同一折、同一进程、背靠背跑完，`python evidence.py 5`，约 6 分钟，截图 ⑳）：
+**所以改用受控单折测量**（同一折、同一进程、背靠背跑完，`python evidence/evidence.py 5`，约 6 分钟，截图 ⑳）：
 
 | 分类器 | 5000 维 | 50000 维 |
 |---|---|---|
