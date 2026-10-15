@@ -1,0 +1,347 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>实验一 · 新闻文本 10 分类 · 结果看板</title>
+<style>
+  :root{
+    --surface:#fcfcfb; --card:#ffffff; --ink:#0b0b0b; --ink2:#52514e; --ink3:#898781;
+    --grid:#e1e0d9; --line:#c3c2b7;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--surface); color:var(--ink);
+    font-family:"Microsoft YaHei","PingFang SC","Hiragino Sans GB","Segoe UI",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  header{padding:32px 28px 8px; max-width:1280px; margin:0 auto}
+  h1{font-size:22px; margin:0 0 6px; letter-spacing:.2px}
+  .sub{color:var(--ink2); font-size:13.5px; margin:0}
+  .hero{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin:22px 0 4px}
+  .tile{background:var(--card); border:1px solid var(--grid); border-radius:10px; padding:14px 16px}
+  .tile .k{font-size:12px; color:var(--ink3); margin-bottom:6px}
+  .tile .v{font-size:24px; font-weight:700; letter-spacing:-.3px}
+  .tile .n{font-size:11.5px; color:var(--ink3); margin-top:4px}
+  main{max-width:1280px; margin:0 auto; padding:16px 28px 56px;
+       display:grid; grid-template-columns:1fr 1fr; gap:16px}
+  .card{background:var(--card); border:1px solid var(--grid); border-radius:10px; padding:16px 18px 12px}
+  .card.wide{grid-column:1 / -1}
+  .card h2{font-size:14.5px; margin:0 0 3px; font-weight:700}
+  .card p{margin:0 0 6px; font-size:12.5px; color:var(--ink2); line-height:1.55}
+  svg{display:block; width:100%; height:auto}
+  .note{font-size:11.5px; color:var(--ink3); margin:8px 0 2px; line-height:1.5}
+  table{border-collapse:collapse; width:100%; font-size:12.5px; margin-top:4px}
+  th,td{padding:7px 8px; text-align:right; border-bottom:1px solid var(--grid)}
+  th:first-child,td:first-child{text-align:left; color:var(--ink2)}
+  thead th{color:var(--ink); font-weight:700; border-bottom:1.5px solid var(--line)}
+  tr.grp td{background:#f6f6f3; color:var(--ink2); font-weight:700; padding:6px 8px}
+  .win{color:#1baf7a; font-weight:700}
+  footer{max-width:1280px; margin:0 auto; padding:0 28px 40px; color:var(--ink3); font-size:11.5px}
+  @media(max-width:900px){ main{grid-template-columns:1fr} .hero{grid-template-columns:1fr 1fr} }
+</style>
+</head>
+<body>
+<header>
+  <h1>新闻文本 10 分类 · 结果看板</h1>
+  <p class="sub">TF-IDF + 四种分类器 · 25 折重复分层交叉验证 · 每个模型均已调到自身最优</p>
+  <div class="hero" id="hero"></div>
+</header>
+
+<main>
+  <section class="card">
+    <h2>四模型最终成绩</h2>
+    <p>灰点 = 库默认参数，彩点 = 调到最优。LR 与 NB 的默认值离最优很远。</p>
+    <div id="c_model"></div>
+  </section>
+
+  <section class="card">
+    <h2>从基线到最终</h2>
+    <p>四个模型全部受益，提升 +0.026 ~ +0.032。</p>
+    <div id="c_slope"></div>
+  </section>
+
+  <section class="card">
+    <h2>这 2.8 个点从哪来</h2>
+    <p>清洗 +0.0033，TF-IDF 调参 +0.0245 —— 九成来自特征表示。</p>
+    <div id="c_water"></div>
+  </section>
+
+  <section class="card">
+    <h2>调参带来了多少</h2>
+    <p>MLP 与 LinearSVC 的默认值本就够好；LR 与 NB 分别白拿 +0.0125 / +0.0204。</p>
+    <div id="c_gain"></div>
+  </section>
+
+  <section class="card">
+    <h2>5000 维 vs 50000 维</h2>
+    <p>排序会反转，但两次都不显著 —— 谁排第一都没有统计依据。</p>
+    <div id="c_dim"></div>
+  </section>
+
+  <section class="card">
+    <h2>训练成本（单折，对数轴）</h2>
+    <p>MLP 比 LinearSVC 慢两个数量级；LR 只慢不到一个数量级。</p>
+    <div id="c_cost"></div>
+  </section>
+
+  <section class="card wide">
+    <h2>总表</h2>
+    <div id="tbl"></div>
+    <p class="note">※ 耗时行为受控单折测量（同一折、同一进程背靠背）。绝对耗时随机器负载波动 1.5~2.5 倍，只用来看量级。</p>
+  </section>
+</main>
+
+<footer>数据来源：results/ 下的结果 CSV。分数均为交叉验证估值，测试集未参与任何模型选择。</footer>
+
+<script>
+/* ============================== 数据 ============================== */
+const MODELS = ["MLP","LinearSVC","LogisticRegression","NaiveBayes"];
+const CN   = {MLP:"MLP", LinearSVC:"LinearSVC", LogisticRegression:"逻辑回归", NaiveBayes:"朴素贝叶斯"};
+const COL  = {MLP:"#eda100", LinearSVC:"#1baf7a", LogisticRegression:"#eb6834", NaiveBayes:"#2a78d6"};
+const INK="#0b0b0b", INK2="#52514e", INK3="#898781", GRID="#e1e0d9", LINE="#c3c2b7", BASE_C="#c3c2b7";
+
+// ① 调到自身最优（25 折）
+const TUNED = {
+  MLP:               {f1:0.9445, sd:0.0060, acc:0.9442, gap:0.0493, cost:195.2, cfg:"(100,)，α=1e-3"},
+  LinearSVC:         {f1:0.9434, sd:0.0062, acc:0.9432, gap:0.0562, cost:0.51,  cfg:"C=1（默认即最优）"},
+  LogisticRegression:{f1:0.9405, sd:0.0068, acc:0.9403, gap:0.0593, cost:4.45,  cfg:"C=100"},
+  NaiveBayes:        {f1:0.9391, sd:0.0053, acc:0.9388, gap:0.0538, cost:0.02,  cfg:"α=0.1"},
+};
+// ② 库默认超参（25 折）
+const DEF = {MLP:0.9445, LinearSVC:0.9434, LogisticRegression:0.9280, NaiveBayes:0.9187};
+// 基线：原文 + 5000 维
+const BASE = {MLP:0.9130, LinearSVC:0.9156, LogisticRegression:0.9009, NaiveBayes:0.8928};
+// 5000 维 / 50000 维（默认超参）
+const DIM5  = {MLP:0.9173, LinearSVC:0.9189, LogisticRegression:0.9060, NaiveBayes:0.9017};
+const DIM50 = DEF;
+
+/* ============================== 绘图工具 ============================== */
+const f4 = v => v.toFixed(4);
+const H  = v => String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+
+function T(x,y,s,o){
+  o = o||{};
+  const anchor = o.anchor||"start", weight = o.bold?"700":"400";
+  const color = o.color||INK, size = o.size||11;
+  const mid = o.middle ? ' dominant-baseline="middle"' : '';
+  return `<text x="${(+x).toFixed(1)}" y="${(+y).toFixed(1)}" text-anchor="${anchor}"${mid}`
+       + ` font-size="${size}" font-weight="${weight}" fill="${color}">${H(s)}</text>`;
+}
+function dot(x,y,color,r){
+  r = r||6;
+  return `<circle cx="${(+x).toFixed(1)}" cy="${(+y).toFixed(1)}" r="${r}" fill="${color}" stroke="#fff" stroke-width="1.8"/>`;
+}
+function svg(W,h,inner){ return `<svg viewBox="0 0 ${W} ${h}" role="img">${inner}</svg>`; }
+
+// 均匀刻度（不重复、不重叠）
+function ticks(d0,d1,step){
+  const out=[]; const s=Math.ceil(d0/step - 1e-9)*step;
+  for(let v=s; v<=d1+1e-9; v+=step) out.push(+v.toFixed(6));
+  return out;
+}
+function lin(d0,d1,r0,r1){ return v => r0 + (v-d0)/(d1-d0)*(r1-r0); }
+
+// 统一的“值区间”卡片：横轴刻度 + 竖向网格
+function frame(W,h,L,R,Tp,B,d0,d1,step,fmt,axisLabel){
+  const x = lin(d0,d1,L,W-R), ts = ticks(d0,d1,step);
+  let g = ts.map(v=>`<line x1="${x(v).toFixed(1)}" y1="${Tp}" x2="${x(v).toFixed(1)}" y2="${h-B}" stroke="${GRID}" stroke-width="1"/>`).join("");
+  g += ts.map(v=>T(x(v), h-B+15, fmt(v), {anchor:"middle", color:INK3, size:10})).join("");
+  if(axisLabel) g += T((L+W-R)/2, h-6, axisLabel, {anchor:"middle", color:INK2, size:11});
+  return {g, x};
+}
+function rowsY(h,Tp,B,n){
+  const span = h-B-Tp, gap = span/n;
+  return i => Tp + gap*i + gap/2;
+}
+
+/* ============================== 1 · 四模型哑铃 ============================== */
+function chartModel(){
+  const W=560,h=252,L=104,R=112,Tp=14,B=46;
+  const all = MODELS.flatMap(m=>[DEF[m],TUNED[m].f1]);
+  const d0=Math.min(...all)-0.006, d1=Math.max(...all)+0.007;
+  const F = frame(W,h,L,R,Tp,B,d0,d1,0.005,v=>v.toFixed(3),"Macro-F1");
+  const y = rowsY(h,Tp,B,4);
+  let g = F.g;
+  MODELS.forEach((m,i)=>{
+    const yy=y(i), c=COL[m], d=DEF[m], t=TUNED[m].f1;
+    g += T(L-14, yy, CN[m], {anchor:"end", middle:true, size:12, color:INK});
+    g += `<line x1="${F.x(d)}" y1="${yy}" x2="${F.x(t)}" y2="${yy}" stroke="${c}" stroke-width="2.4" opacity=".45" stroke-linecap="round"/>`;
+    g += dot(F.x(d), yy, BASE_C, 5.5);
+    const lo=F.x(t-TUNED[m].sd), hi=F.x(t+TUNED[m].sd);
+    g += `<line x1="${lo}" y1="${yy}" x2="${hi}" y2="${yy}" stroke="${c}" stroke-width="2" opacity=".5" stroke-linecap="round"/>`;
+    g += dot(F.x(t), yy, c, 6.5);
+    // 默认值标签：与最优值差得足够远才画，避免叠字
+    if(Math.abs(t-d) > 0.004) g += T(F.x(d)-11, yy, f4(d), {anchor:"end", middle:true, color:INK3, size:10.5});
+    g += T(F.x(t)+14, yy, `${f4(t)} ±${TUNED[m].sd.toFixed(4)}`, {middle:true, bold:true, size:11});
+  });
+  return svg(W,h,g);
+}
+
+/* ============================== 2 · 基线 → 最终 ============================== */
+function chartSlope(){
+  const W=560,h=252,L=100,R=136,Tp=14,B=46;
+  const all = MODELS.flatMap(m=>[BASE[m],TUNED[m].f1]);
+  const d0=Math.min(...all)-0.006, d1=Math.max(...all)+0.008;
+  const F = frame(W,h,L,R,Tp,B,d0,d1,0.01,v=>v.toFixed(2),"Macro-F1");
+  const y = rowsY(h,Tp,B,4);
+  let g = F.g;
+  MODELS.forEach((m,i)=>{
+    const yy=y(i), c=COL[m], a=BASE[m], b=TUNED[m].f1;
+    g += T(L-14, yy, CN[m], {anchor:"end", middle:true, size:12, color:INK});
+    g += `<line x1="${F.x(a)}" y1="${yy}" x2="${F.x(b)}" y2="${yy}" stroke="${c}" stroke-width="2.4" opacity=".45" stroke-linecap="round"/>`;
+    g += `<path d="M ${(F.x(b)-10).toFixed(1)} ${yy-5} L ${(F.x(b)-2).toFixed(1)} ${yy} L ${(F.x(b)-10).toFixed(1)} ${yy+5} Z" fill="${c}"/>`;
+    g += dot(F.x(a), yy, BASE_C, 5.5);
+    g += dot(F.x(b), yy, c, 6.5);
+    g += T(F.x(a)-11, yy, f4(a), {anchor:"end", middle:true, color:INK3, size:10.5});
+    g += T(F.x(b)+13, yy-7, f4(b), {middle:true, bold:true, size:11});
+    g += T(F.x(b)+13, yy+8, "+"+(b-a).toFixed(4), {middle:true, color:c, bold:true, size:10.5});
+  });
+  return svg(W,h,g);
+}
+
+/* ============================== 3 · 增益瀑布 ============================== */
+function chartWaterfall(){
+  const W=560,h=252,L=54,R=26,Tp=22,B=50;
+  const floor=0.911, top=0.9485;
+  const y = lin(floor,top,h-B,Tp);
+  const xs=[L+52, L+166, L+280, L+394], bw=58;
+  const lv=[0.9156,0.9189,0.9434], d1=0.0033, d2=0.0245;
+  let g="";
+  ticks(0.915,0.945,0.005).forEach(v=>{
+    g += `<line x1="${L}" y1="${y(v)}" x2="${W-R}" y2="${y(v)}" stroke="${GRID}" stroke-width="1"/>`;
+    g += T(L-9, y(v), v.toFixed(3), {anchor:"end", middle:true, color:INK3, size:10});
+  });
+  g += T(L-9, Tp-8, "Macro-F1", {anchor:"start", color:INK2, size:11});
+  g += `<rect x="${xs[0]-bw/2}" y="${y(lv[0])}" width="${bw}" height="${h-B-y(lv[0])}" fill="${BASE_C}"/>`;
+  g += `<rect x="${xs[1]-bw/2}" y="${y(lv[1])}" width="${bw}" height="${y(lv[0])-y(lv[1])}" fill="#2a78d6"/>`;
+  g += `<rect x="${xs[2]-bw/2}" y="${y(lv[2])}" width="${bw}" height="${y(lv[1])-y(lv[2])}" fill="#2a78d6"/>`;
+  g += `<rect x="${xs[3]-bw/2}" y="${y(lv[2])}" width="${bw}" height="${h-B-y(lv[2])}" fill="#52514e"/>`;
+  // 虚线 + 级值（白底避免压线）
+  [[xs[0],xs[1],lv[0]],[xs[1],xs[2],lv[1]],[xs[2],xs[3],lv[2]]].forEach(([a,b,v])=>{
+    const ya=y(v), xa=a+bw/2, xb=b-bw/2, mx=(xa+xb)/2;
+    g += `<line x1="${xa}" y1="${ya}" x2="${xb}" y2="${ya}" stroke="${INK3}" stroke-width="1" stroke-dasharray="3 3"/>`;
+    g += `<rect x="${mx-25}" y="${ya-8}" width="50" height="16" fill="#ffffff"/>`;
+    g += T(mx, ya, f4(v), {anchor:"middle", middle:true, bold:true, size:10.5});
+  });
+  g += T(xs[1], y(lv[1])-11, "+"+f4(d1), {anchor:"middle", color:"#2a78d6", bold:true, size:11.5});
+  g += T(xs[2], y(lv[2])-11, "+"+f4(d2), {anchor:"middle", color:"#2a78d6", bold:true, size:11.5});
+  [["基线","原文+5000维"],["+删路由头",""],["+TF-IDF 调参",""],["最终",""]].forEach(([a,b],i)=>{
+    g += T(xs[i], h-B+17, a, {anchor:"middle", color:INK2, size:10.5});
+    if(b) g += T(xs[i], h-B+30, b, {anchor:"middle", color:INK3, size:10});
+  });
+  return svg(W,h,g);
+}
+
+/* ============================== 4 · 调参收益 ============================== */
+function chartGain(){
+  const W=560,h=252,L=118,R=92,Tp=34,B=42;
+  const gains = MODELS.map(m=>+(TUNED[m].f1-DEF[m]).toFixed(5));
+  const maxG = 0.022;
+  const xg = lin(0,maxG,L,W-R);          // 横向刻度：柱长编码数值
+  let g="";
+  ticks(0,0.020,0.005).forEach(v=>{
+    g += `<line x1="${xg(v).toFixed(1)}" y1="${Tp-4}" x2="${xg(v).toFixed(1)}" y2="${h-B}" stroke="${GRID}" stroke-width="1"/>`;
+    g += T(xg(v), h-B+15, v.toFixed(3), {anchor:"middle", color:INK3, size:10});
+  });
+  g += T(L, Tp-20, "Macro-F1 提升（相对库默认超参）", {color:INK2, size:11});
+  MODELS.forEach((m,i)=>{
+    const yy = Tp + (h-B-Tp)*i/4 + (h-B-Tp)/8;
+    const c = COL[m], v = gains[i];
+    g += T(L, yy-14, CN[m], {anchor:"start", color:INK2, size:11});
+    if(v > 0.0005){
+      g += `<rect x="${L}" y="${yy-9}" width="${(xg(v)-L).toFixed(1)}" height="18" rx="3" fill="${c}" opacity=".9"/>`;
+      g += T(xg(v)+9, yy, "+"+f4(v), {middle:true, bold:true, size:11.5});
+    } else {
+      g += `<rect x="${L}" y="${yy-9}" width="4" height="18" rx="2" fill="${BASE_C}"/>`;
+      g += T(L+14, yy, "≈ 0（默认值即最优）", {middle:true, color:INK3, size:11});
+    }
+  });
+  return svg(W,h,g);
+}
+
+/* ============================== 5 · 维度对照 ============================== */
+function chartDim(){
+  const W=560,h=252,L=104,R=78,Tp=14,B=60;
+  const all = MODELS.flatMap(m=>[DIM5[m],DIM50[m]]);
+  const d0=Math.min(...all)-0.006, d1=Math.max(...all)+0.008;
+  const F = frame(W,h,L,R,Tp,B,d0,d1,0.01,v=>v.toFixed(2),null);
+  const y = rowsY(h,Tp,B,4);
+  let g = F.g;
+  MODELS.forEach((m,i)=>{
+    const yy=y(i), c=COL[m], a=DIM5[m], b=DIM50[m];
+    g += T(L-14, yy, CN[m], {anchor:"end", middle:true, size:12, color:INK});
+    g += `<line x1="${F.x(a)}" y1="${yy}" x2="${F.x(b)}" y2="${yy}" stroke="${c}" stroke-width="2.4" opacity=".45" stroke-linecap="round"/>`;
+    g += dot(F.x(a), yy, BASE_C, 5.5);
+    g += dot(F.x(b), yy, c, 6.5);
+    g += T(F.x(a)-11, yy, f4(a), {anchor:"end", middle:true, color:INK3, size:10.5});
+    g += T(F.x(b)+13, yy, f4(b), {middle:true, bold:true, size:11});
+  });
+  g += dot(L+6, h-11, BASE_C, 5) + T(L+19, h-11, "5000 维", {middle:true, color:INK2, size:11});
+  g += dot(L+100, h-11, "#52514e", 5.5) + T(L+113, h-11, "50000 维（默认超参）", {middle:true, color:INK2, size:11});
+  return svg(W,h,g);
+}
+
+/* ============================== 6 · 训练成本 ============================== */
+function chartCost(){
+  const W=560,h=252,L=104,R=76,Tp=22,B=46;
+  const lo=Math.log10(0.012), hi=Math.log10(420);
+  const x = v => L + (Math.log10(v)-lo)/(hi-lo)*(W-R-L);
+  let g="";
+  [0.01,0.1,1,10,100].forEach(v=>{
+    g += `<line x1="${x(v)}" y1="${Tp}" x2="${x(v)}" y2="${h-B}" stroke="${GRID}" stroke-width="1"/>`;
+    g += T(x(v), h-B+15, v+" s", {anchor:"middle", color:INK3, size:10});
+  });
+  g += T(L-9, Tp-8, "单折拟合耗时（对数轴）", {color:INK2, size:11});
+  MODELS.forEach((m,i)=>{
+    const yy = Tp + (h-B-Tp)*i/4 + (h-B-Tp)/8;
+    const c=COL[m], v=TUNED[m].cost;
+    g += T(L-14, yy, CN[m], {anchor:"end", middle:true, size:12, color:INK});
+    g += `<line x1="${x(0.02)}" y1="${yy}" x2="${x(v)}" y2="${yy}" stroke="${c}" stroke-width="2.4" opacity=".28" stroke-linecap="round"/>`;
+    g += dot(x(v), yy, c, 6.5);
+    g += T(x(v)+13, yy, v<1 ? v.toFixed(2)+" s" : v.toFixed(1)+" s", {middle:true, bold:true, size:11});
+  });
+  return svg(W,h,g);
+}
+
+/* ============================== 总表 ============================== */
+function table(){
+  const rows=[];
+  const row = (label, get, fmt) => {
+    const tds = MODELS.map(m=>`<td>${fmt(get(m))}</td>`).join("");
+    return `<tr><td>${label}</td>${tds}</tr>`;
+  };
+  rows.push(`<tr class="grp"><td colspan="5">① 各自调到最优后（最终成绩）</td></tr>`);
+  rows.push(row("最优超参", m=>TUNED[m].cfg, v=>v));
+  rows.push(row("Accuracy", m=>TUNED[m].acc, v=>v.toFixed(4)));
+  rows.push(`<tr><td>Macro-F1</td>` + MODELS.map(m=>
+      `<td style="font-weight:700">${f4(TUNED[m].f1)} <span style="font-weight:400;color:${INK3}">±${TUNED[m].sd.toFixed(4)}</span></td>`).join("") + `</tr>`);
+  rows.push(row("泛化间隙", m=>TUNED[m].gap, v=>v.toFixed(4)));
+  rows.push(row("单折拟合耗时", m=>TUNED[m].cost, v=> v<1 ? v.toFixed(2)+" s" : v.toFixed(1)+" s"));
+  rows.push(`<tr class="grp"><td colspan="5">② 对照：库默认超参</td></tr>`);
+  rows.push(row("Macro-F1（默认）", m=>DEF[m], v=>v.toFixed(4)));
+  rows.push(`<tr><td>调参带来的提升</td>` + MODELS.map(m=>{
+      const v = TUNED[m].f1 - DEF[m];
+      return `<td>${ v>0.0005 ? `<span class="win">+${f4(v)}</span>` : `<span style="color:${INK3}">≈ 0</span>` }</td>`;
+  }).join("") + `</tr>`);
+  return `<table><thead><tr><th>指标</th>${MODELS.map(m=>`<th>${CN[m]}</th>`).join("")}</tr></thead><tbody>${rows.join("")}</tbody></table>`;
+}
+
+/* ============================== 渲染 ============================== */
+document.getElementById("hero").innerHTML = [
+  {k:"最终方案 Macro-F1", v:"0.9434", n:"LinearSVC · 25 折"},
+  {k:"相对基线提升",     v:"+0.0278", n:"0.9156 → 0.9434"},
+  {k:"四模型极差",       v:"0.0054",  n:"调参对等后（0.9391 ~ 0.9445）"},
+  {k:"MLP 与 LinearSVC", v:"p = 0.32", n:"统计上不可区分"},
+].map(t=>`<div class="tile"><div class="k">${t.k}</div><div class="v">${t.v}</div><div class="n">${t.n}</div></div>`).join("");
+
+document.getElementById("c_model").innerHTML = chartModel();
+document.getElementById("c_slope").innerHTML = chartSlope();
+document.getElementById("c_water").innerHTML = chartWaterfall();
+document.getElementById("c_gain").innerHTML  = chartGain();
+document.getElementById("c_dim").innerHTML   = chartDim();
+document.getElementById("c_cost").innerHTML  = chartCost();
+document.getElementById("tbl").innerHTML     = table();
+</script>
+</body>
+</html>
