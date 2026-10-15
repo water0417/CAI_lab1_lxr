@@ -1,0 +1,7 @@
+[补齐最优配置指标] routing + max_features=50000 + sublinear_tf，25 折
+[说明] 与主表同一条代码路径（main.run_cv），故与表 3-1 上半部分逐格可比
+
+  LogisticRegression · C=100（最优）     Macro-F1=0.9405 ± 0.0068  Accuracy=0.9403  间隙=0.0593  (1625s)
+  NaiveBayes · alpha=0.1（最优）         Macro-F1=0.9391 ± 0.0053  Accuracy=0.9388  间隙=0.0538  (98s)
+
+  [记录] results\model_metrics_tuned_5x5.csv

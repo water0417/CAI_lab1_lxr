@@ -1,6 +1,6 @@
 # results/ —— 实验结果索引
 
-本目录是**全部结论的数据来源**。共 86 个文件：**54 份结果 CSV + 32 份运行日志**。
+本目录是**全部结论的数据来源**。共 88 个文件：**55 份结果 CSV + 33 份运行日志**。
 
 ## 命名规则
 
@@ -198,6 +198,8 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 | `nb_alpha_sweep_5x5.csv` | **NB 的 alpha 细化扫描**（0.03~0.3，最优 0.1） | `python nb_alpha_check.py` |
 | `nb_alpha_fold_scores_5x5.csv` | 上者的逐折分数 | 同上 |
 | `run_tuning_fairness.log` / `run_nb_alpha_fine.log` | 运行日志 | 同上 |
+| `model_metrics_tuned_5x5.csv` | **LR(C=100) 与 NB(alpha=0.1) 调参后的完整指标**（与主表逐格可比） | `python tuned_metrics.py` |
+| `run_tuned_metrics.log` | 上者的运行日志 | 同上 |
 | `mlp_tuned_25fold_5x5.csv` | **MLP 最优配置的 25 折确认**（`(100,)`, alpha=1e-3） | `python mlp_tune.py confirm "(100,)" 1e-3` |
 | `mlp_tuned_fold_scores_5x5.csv` | 上者的逐折分数 | 同上 |
 | `run_mlp_confirm.log` | 运行日志 | 同上 |
