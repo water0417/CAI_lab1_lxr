@@ -18,7 +18,7 @@ import pandas as pd
 
 import main as M
 
-SCREEN = M.RESULT_DIR / "mlp_screen_partial_5fold.csv"
+SCREEN = M.RESULT_DIR / "mlp_screen_5fold.csv"
 N_COMBOS = 12
 
 
