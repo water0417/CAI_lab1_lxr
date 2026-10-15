@@ -1,46 +1,88 @@
 # -*- coding: utf-8 -*-
 """
-实验一：新闻文本 10 分类
-=========================
+实验一：新闻文本 10 分类 —— 主实验脚本
+=====================================
 
-主实验脚本。
+本文件是实验的**唯一入口**，覆盖从数据划分到提交文件生成的全部流程。
+其余脚本（`experiments/`、`evidence/`）只做补充验证，都复用本文件的函数与路径常量。
 
-已完成：
-  步骤 0  环境与目录骨架、可运行基线
-  步骤 1  严格的"先划分、后处理"数据流水线 + 重复分层交叉验证
+## 实验流程与对应开关
 
-设计原则（对应《实验一要求》第 2~5 页的实验规范）：
-  1. 防数据泄露：任何 fit 只发生在训练数据上。
-     - TF-IDF 被绑定进 Pipeline，交叉验证时每折独立拟合一份词表与 IDF；
-     - 测试集被"气隙隔离"：只有显式传 --submit 才会被读取，其余路径根本不加载它。
-  2. 控制变量：所有模型共用同一套 CV 划分、同一套 TF-IDF 配置、同一个随机种子。
-     比较模型时 TF-IDF 参数必须完全一致，否则模型间的差异无法归因。
-  3. 可复现：SEED 固定；数据文件指纹（大小 + SHA256）在运行日志中留痕；
-     环境版本记录在 requirements.txt；结果表格落盘到 results/。
+| 阶段 | 主要开关 | 做什么 |
+|---|---|---|
+| 自检 | `--smoke` | 600 条样本走通全流程，**不写任何文件** |
+| 1 · 数据划分 | `--compare-splits` | 单次 80/20 vs 5 折 CV 的估计稳定性对照 |
+| 2 · 清洗与增强 | `--ablation`、`--paired-test`、`--augment`、`--augment-robust`、`--show-clean` | 13 个清洗配置的消融、配对检验、数据增强与鲁棒性评估 |
+| 3 · TF-IDF 调参 | `--tfidf-sweep`、`--tfidf-combo`、`--tfidf-report` | 单参数敏感性扫描 + 参数组合验证 |
+| 4 · 模型调参 | `--model-sweep`、`--nested-cv`、`--model-paired-test` | 超参扫描、嵌套 CV 无偏估计、四模型两两配对检验 |
+| 5 · 评估 | `--learning-curve`、`--ablation-report` | 学习曲线（过拟合随数据量的变化） |
+| 6 · 提交 | `--submit` | **唯一读取测试集**的路径，写出预测文件 |
 
-评估方案说明（为什么不用单次 80/20 划分）：
-  单次划分的估计值对"抽到哪 1474 条"高度敏感。实测换随机种子，LinearSVC 的
-  单次 holdout 估计标准差为 0.0070（极差 0.0207），而 5 折 CV 只有 0.0025
-  （极差 0.0073）——单次划分的波动比模型之间的真实差距还大。
-  因此这里以重复分层交叉验证为主：5 折 × 5 次重复 = 25 个估计值，
-  报告"均值 ± 标准差"，直接响应任务书第 5 页"存在随机性时报告波动"的要求。
+完整开关见 `python main.py --help`（共 25 个）。
 
-用法：
+## 设计原则（对应《实验一要求》第 2~5 页的实验规范）
+
+1. **防数据泄露**：任何 fit 只发生在训练数据上。
+   - TF-IDF 绑定在 Pipeline 内，交叉验证时**每折独立拟合**一份词表与 IDF；
+   - 测试集"气隙隔离"：只有 `--submit` 会读取，其余路径根本不加载它；
+   - 数据增强**只在 CV 折内做**——先增广再划分会造成隐蔽泄露（同一文本的原始版
+     与扰动版分落训练/验证折，常规查重发现不了）。
+2. **控制变量**：所有模型共用同一套 CV 划分、同一套 TF-IDF 配置、同一个随机种子。
+   比较模型时 TF-IDF 参数必须完全一致，否则模型间的差异无法归因。
+3. **可复现**：SEED 固定；数据指纹（大小 + SHA256）写进每份日志；
+   环境版本记录在 requirements.txt；结果一律落盘到 `results/`。
+4. **一切结论都过配对检验**：逐折分数落盘到 `results/*fold_scores*.csv`，
+   因此任意两个配置都能**事后重算**配对 t 检验，不依赖当时打印的结论。
+
+## 长跑保护（这台机器会不定期休眠）
+
+几小时的长任务很容易被系统冻结，因此每个扫描都做了两件事：
+
+- **逐配置落盘 + 断点续跑**：中断后重跑会跳过已完成的配置；
+- **写盘前与旧文件取并集**（`_union_with_prev`）：只请求部分配置时不会把已有结果抹掉。
+  —— 这是早期踩过的坑：续跑逻辑是覆盖式的，只跑子集会把上次的结果从 CSV 里删掉，
+  而且**没有任何报错**。
+
+## 用法
+
     conda activate AILab
 
-    python main.py --smoke             # 小样本自检，不写任何文件
-    python main.py                     # 默认：5 折 × 5 次重复交叉验证（约 16 分钟）
-    python main.py --repeats 1         # 快速版：只跑 5 折单次（约 4 分钟）
-    python main.py --models NaiveBayes LogisticRegression LinearSVC   # 跳过昂贵的 MLP
-    python main.py --holdout           # 额外附一次 80/20 单次划分做对照
-    python main.py --submit            # 唯一会读取测试集并生成 predictions.csv 的开关
+    python main.py --smoke                     # 自检，不写任何文件
+    python main.py                             # 基线：四模型 × 25 折（约 31 分钟）
+    python main.py --ablation                  # 清洗消融（13 配置，约 85 分钟）
+    python main.py --tfidf-sweep --clean-preset both   # TF-IDF 参数扫描
+    python main.py --model-sweep               # 模型超参扫描
+    python main.py --nested-cv                 # 嵌套交叉验证
+    python main.py --model-paired-test --tfidf-preset best   # 四模型主结果 + 两两配对检验
+    python main.py --learning-curve            # 学习曲线
+    python main.py --submit --models LinearSVC # 生成提交文件（唯一读取测试集）
+    python main.py --help                      # 全部开关
 
-输出：
-    ../results/cv_5x5.csv          重复交叉验证结果（均值 ± 标准差）
-    ../results/holdout_val.csv     仅 --holdout 时生成
-    ./predictions.csv              仅 --submit 时生成（2457 行、单列、无表头、取值 0~9）
-    ../figs/                       图表（后续步骤生成）
+## 输出
+
+结果一律写到 `Lab1/results/`（`RESULT_DIR` 以**本文件位置**为锚，不受调用目录影响）：
+
+    cv_5x5.csv                          基线交叉验证（四模型 × 25 折）
+    ablation_clean_5x5.csv              清洗消融（13 配置）
+    tfidf_sweep_{raw,routing}_5x5.csv   TF-IDF 参数扫描
+    model_sweep_routing_5x5.csv         模型超参扫描
+    nested_cv_5x5.csv                   嵌套 CV 无偏估计
+    model_metrics_routing_best_5x5.csv  四模型主结果（+ 配对检验）
+    learning_curve.csv                  学习曲线
+    *_fold_scores_*.csv                 逐折分数（配对检验的唯一输入）
+    run_*.log                           运行日志（部分被渲染成报告里的终端截图）
+
+    ./predictions.csv                   仅 --submit 生成（2457 行、单列、无表头、取值 0~9）
+
+## 为什么不用单次 80/20 划分
+
+单次划分的估计值对"抽到哪 1474 条"高度敏感。实测换随机种子，LinearSVC 的单次
+holdout 估计标准差为 0.0070（极差 0.0207），而 5 折 CV 只有 0.0025（极差 0.0073）
+——**单次划分的波动比模型之间的真实差距还大**。
+因此这里以重复分层交叉验证为主：5 折 × 5 次重复 = 25 个估计值，报告"均值 ± 标准差"，
+直接响应任务书第 5 页"存在随机性时报告波动"的要求。
 """
+
 from __future__ import annotations
 
 import argparse
