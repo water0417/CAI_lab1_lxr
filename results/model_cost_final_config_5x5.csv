@@ -1,0 +1,5 @@
+﻿模型,最终配置,单折拟合耗时(s),迭代次数
+MLP,"hidden=(100,)、alpha=1e-3",195.16,18.0
+LinearSVC,C=1,0.51,42.0
+LogisticRegression,C=100,4.45,64.0
+NaiveBayes,alpha=0.1,0.02,

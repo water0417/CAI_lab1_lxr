@@ -1,6 +1,6 @@
 # results/ —— 实验结果索引
 
-本目录是**全部结论的数据来源**。共 88 个文件：**55 份结果 CSV + 33 份运行日志**。
+本目录是**全部结论的数据来源**。共 90 个文件：**56 份结果 CSV + 34 份运行日志**。
 
 ## 命名规则
 
@@ -162,6 +162,8 @@ run_<实验名>.log                 运行日志（原始输出，部分被用�
 | `evidence_4.log` | MLP 稠密化探测：维度、非零项数、单折计时 | `python evidence.py 4` |
 | `evidence_5.log` | 四模型单折受控计时（5000 维 vs 50000 维） | `python evidence.py 5` |
 | `model_cost_single_fold.csv` | 上者的结果表 | 同上 |
+| `model_cost_final_config_5x5.csv` | **表 3-1 ① 部分最终配置**的受控单折成本（四模型同折同进程） | `python cost_probe_final.py` |
+| `run_cost_probe_final.log` | 上者的运行日志 | 同上 |
 
 **对应报告**：§2.3 / §3.2 / §三 / §3.5 / §5.2 ｜ **截图 ③④⑪⑫⑳**
 

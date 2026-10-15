@@ -1,0 +1,11 @@
+[受控单折成本] 表 3-1 ① 部分的最终配置 | 第 1 折 训练 5894 条 | 维度 50,000 | TF-IDF 拟合 3.0s
+
+  MLP                  hidden=(100,)、alpha=1e-3     195.16s   迭代 18
+  LinearSVC            C=1                            0.51s   迭代 42
+  LogisticRegression   C=100                          4.45s   迭代 64
+  NaiveBayes           alpha=0.1                      0.02s
+
+  对照：LinearSVC 0.51s，MLP 195.16s → MLP 慢约 383 倍
+  （绝对耗时随机器负载波动 1.5~2.5 倍，故只用来看量级）
+
+  [记录] results\model_cost_final_config_5x5.csv
